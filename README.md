@@ -28,6 +28,8 @@ All shiny Pokemon from your stash are saved in their incomplete "wild" format in
 * Falling off or warping back on top of buildings multiple times.
 * Warping into the geometry and [falling through the map to your inevitable doom.](https://x.com/berichandev/status/1980471677659279623) This always happens when warping too far away due to the collision LODing.
 
+![Main window](ZAShinyWarper_Window.png?raw=true "The program itself")
+
 Rundown video: https://youtu.be/eKydGGQbS_0 
 
 # Attributions

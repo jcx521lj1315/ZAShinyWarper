@@ -2,8 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net9.0-windows</TargetFramework>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>PLAWarper</RootNamespace>
-    <AssemblyName>PLAWarper</AssemblyName>
+    <RootNamespace>ZAShinyWarper</RootNamespace>
+    <AssemblyName>ZAShinyWarper</AssemblyName>
     <LangVersion>9</LangVersion>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
