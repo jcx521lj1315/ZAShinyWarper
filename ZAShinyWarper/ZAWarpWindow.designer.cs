@@ -71,12 +71,15 @@
             lblShinyFound = new System.Windows.Forms.Label();
             btnWarp = new System.Windows.Forms.Button();
             lblCreateTwo = new System.Windows.Forms.Label();
+            lblSaveFreq = new System.Windows.Forms.Label();
+            numericUpDownSaveFreq = new System.Windows.Forms.NumericUpDown();
             groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)numericUpDown1).BeginInit();
             gBShinyHunt.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)numericUpDownCamMove).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numericUpDownSpawnCheckTime).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numericUpDownScale).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numericUpDownSaveFreq).BeginInit();
             SuspendLayout();
             // 
             // label1
@@ -261,6 +264,8 @@
             // 
             // gBShinyHunt
             // 
+            gBShinyHunt.Controls.Add(numericUpDownSaveFreq);
+            gBShinyHunt.Controls.Add(lblSaveFreq);
             gBShinyHunt.Controls.Add(numericUpDownCamMove);
             gBShinyHunt.Controls.Add(lblCam);
             gBShinyHunt.Controls.Add(numericUpDownSpawnCheckTime);
@@ -530,6 +535,24 @@
             lblCreateTwo.TabIndex = 0;
             lblCreateTwo.Text = "Create at least two warp points.";
             // 
+            // lblSaveFreq
+            // 
+            lblSaveFreq.AutoSize = true;
+            lblSaveFreq.Location = new System.Drawing.Point(14, 209);
+            lblSaveFreq.Name = "lblSaveFreq";
+            lblSaveFreq.Size = new System.Drawing.Size(90, 15);
+            lblSaveFreq.TabIndex = 27;
+            lblSaveFreq.Text = "Save frequency:";
+            // 
+            // numericUpDownSaveFreq
+            // 
+            numericUpDownSaveFreq.Location = new System.Drawing.Point(144, 207);
+            numericUpDownSaveFreq.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            numericUpDownSaveFreq.Name = "numericUpDownSaveFreq";
+            numericUpDownSaveFreq.Size = new System.Drawing.Size(63, 23);
+            numericUpDownSaveFreq.TabIndex = 28;
+            numericUpDownSaveFreq.Value = new decimal(new int[] { 3, 0, 0, 0 });
+            // 
             // ZAWarpWindow
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
@@ -554,6 +577,7 @@
             ((System.ComponentModel.ISupportInitialize)numericUpDownCamMove).EndInit();
             ((System.ComponentModel.ISupportInitialize)numericUpDownSpawnCheckTime).EndInit();
             ((System.ComponentModel.ISupportInitialize)numericUpDownScale).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numericUpDownSaveFreq).EndInit();
             ResumeLayout(false);
             PerformLayout();
 
@@ -604,6 +628,8 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.NumericUpDown numericUpDownCamMove;
         private System.Windows.Forms.Label lblCam;
+        private System.Windows.Forms.NumericUpDown numericUpDownSaveFreq;
+        private System.Windows.Forms.Label lblSaveFreq;
     }
 }
 

@@ -326,6 +326,7 @@ namespace PLADumper
             var warpInterval = (int)numericUpDownSpawnCheckTime.Value;
             var camSpeed = (int)numericUpDownCamMove.Value;
             var action = (ShinyFoundAction)cBWhenShinyFound.SelectedItem!;
+            var saveFrequency = (int)numericUpDownSaveFreq.Value;
             currentWarps = 0;
 
             warping = true;
@@ -339,7 +340,7 @@ namespace PLADumper
             while (warping)
             {
                 currentWarps++;
-                if (currentWarps % warpsPerSave == 0)
+                if (currentWarps % saveFrequency == 0)
                 {
                     // Save
                     bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
