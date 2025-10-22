@@ -322,7 +322,6 @@
             numericUpDownSpawnCheckTime.Increment = new decimal(new int[] { 1000, 0, 0, 0 });
             numericUpDownSpawnCheckTime.Location = new System.Drawing.Point(12, 140);
             numericUpDownSpawnCheckTime.Maximum = new decimal(new int[] { 20000, 0, 0, 0 });
-            numericUpDownSpawnCheckTime.Minimum = new decimal(new int[] { 2000, 0, 0, 0 });
             numericUpDownSpawnCheckTime.Name = "numericUpDownSpawnCheckTime";
             numericUpDownSpawnCheckTime.Size = new System.Drawing.Size(193, 23);
             numericUpDownSpawnCheckTime.TabIndex = 24;

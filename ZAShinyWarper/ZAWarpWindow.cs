@@ -29,7 +29,7 @@ namespace PLADumper
 
         // Bot
         private bool warping = false;
-        private int warpsPerSave = 10;
+        private int warpsPerSave = 3;
         private int currentWarps = 0;
 
         public ZAWarpWindow()
@@ -371,7 +371,7 @@ namespace PLADumper
                                     cleanUpBot();
                                     bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
                                     btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
-                                    MessageBox.Show($"A shiny matching the filter has been found! Stopping warping.\r\n\r\n{ShowdownParsing.GetShowdownText(pk)}");
+                                    MessageBox.Show($"A shiny matching the filter has been found! Stopping warping.\r\n\r\n{ShowdownParsing.GetShowdownText(pk)}", "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                                     break;
                                     //case ShinyFoundAction.CacheAndContinue:
                                     //    MessageBox.Show($"A shiny matching the filter has been found!\r\n\r\n{pk.GetShowdownSet()}");
@@ -386,15 +386,16 @@ namespace PLADumper
                     if (!warping)
                         break;
                     SetPos(pos.x, pos.y, pos.z);
-                    await Task.Delay(4000).ConfigureAwait(false); // fall out and load species
+                    await Task.Delay(1_000).ConfigureAwait(false); // fall out and load species
                     // handle falling out
                     int tries = 25;
                     for (; tries > 0; --tries)
                     {
-                        if (GetPos().y == pos.y)
+                        // check for less than 0.02 difference to avoid float precision issues
+                        if (GetPos().y >= pos.y - 0.02f && GetPos().y <= pos.y + 0.02f)
                             break;
-                        SetPos(pos.x, pos.y, pos.z);
-                        await Task.Delay(1100).ConfigureAwait(false);
+                        SetPos(pos.x, pos.y + (tries > 20 ? 1 : 0), pos.z);
+                        await Task.Delay(1_500).ConfigureAwait(false);
                     }
 
                     if (tries == 0) // failed to load
@@ -405,9 +406,9 @@ namespace PLADumper
                         MessageBox.Show($"Warping has failed, please check the console!");
                         break;
                     }
-                }
 
-                await Task.Delay(warpInterval).ConfigureAwait(false);
+                    await Task.Delay(warpInterval).ConfigureAwait(false);
+                }
             }
         }
     }
