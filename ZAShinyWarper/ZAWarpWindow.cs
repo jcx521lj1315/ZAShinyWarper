@@ -374,7 +374,8 @@ namespace PLADumper
                                     bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
                                     btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
                                     setFiltersEnableState(true);
-                                    MessageBox.Show($"A shiny matching the filter has been found after {currentWarps} attempts! Stopping warping.\r\n\r\n{ShowdownParsing.GetShowdownText(pk)}", "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    MessageBox.Show($"A shiny matching the filter has been found after {currentWarps} attempts! Stopping warping.\r\n\r\n{ShowdownParsing.GetShowdownText(pk)}\r\n" +
+                                                         (pk.Scale == 255 ? "This Pokemon is ALPHA!" : "This Pokemon is not an alpha"), "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                                     break;
                                     //case ShinyFoundAction.CacheAndContinue:
                                     //    MessageBox.Show($"A shiny matching the filter has been found!\r\n\r\n{pk.GetShowdownSet()}");
