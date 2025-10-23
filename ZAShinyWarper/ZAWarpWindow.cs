@@ -300,6 +300,7 @@ namespace PLADumper
             cBWhenShinyFound.PerformSafely(() => cBWhenShinyFound.Enabled = enabled);
             numericUpDownCamMove.PerformSafely(() => numericUpDownCamMove.Enabled = enabled);
             numericUpDownSaveFreq.PerformSafely(() => numericUpDownSaveFreq.Enabled = enabled);
+            groupBox1.PerformSafely(() => groupBox1.Enabled = enabled);
         }
 
         // Bot
