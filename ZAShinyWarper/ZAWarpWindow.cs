@@ -308,7 +308,10 @@ namespace PLADumper
         private void cleanUpBot()
         {
             if (bot != null && bot.Connected)
+            {
                 bot.SendBytes(Encoding.ASCII.GetBytes("setStick RIGHT 0 0\r\n"));
+                bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
+            }
         }
 
         private async void btnWarp_Click(object sender, EventArgs e)
