@@ -110,6 +110,7 @@ namespace PLADumper
                 botsys.Connect(textBox1.Text, 6000);
                 bot = botsys;
                 groupBox1.Enabled = true;
+                gBShinyHunt.Enabled = true;
                 shinyHunter.LoadStashedShinies(bot, "sets.txt");
                 MessageBox.Show($"Connected to SysBot (network). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShowdownSets([.. shinyHunter.StashedShinies.Reverse()])}");
                 bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
@@ -128,6 +129,7 @@ namespace PLADumper
                 botusb.Connect();
                 bot = botusb;
                 groupBox1.Enabled = true;
+                gBShinyHunt.Enabled = true;
                 shinyHunter.LoadStashedShinies(bot, "sets.txt");
                 MessageBox.Show($"Connected to UsbBot (USB). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShowdownSets([.. shinyHunter.StashedShinies.Reverse()])}");
                 bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
