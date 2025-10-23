@@ -20,6 +20,7 @@ namespace PLADumper
 
         private List<Vector3> positions = new List<Vector3>();
         private const string configName = "positions.txt";
+        private const string filterConfigName = "filter_config.txt";
 
         private ShinyHunter<PK9> shinyHunter = new ShinyHunter<PK9>();
 
@@ -51,7 +52,7 @@ namespace PLADumper
             cBSpecies.Items.Add("Any");
             foreach (var item in ZAZukan.PokedexNumbersZA)
                 cBSpecies.Items.Add($"{item.Value:D3} - {item.Key}");
-            cBSpecies.SelectedIndex = 0;
+            cBSpecies.SetItemChecked(0, true);
 
             // IVs
             CBIVs = new ComboBox[6]
@@ -77,19 +78,29 @@ namespace PLADumper
                 textBox1.Text = ip;
             }
 
+            LoadFilterConfig();
             LoadAllAndUpdateUI();
         }
 
         private ShinyHunter<PK9>.ShinyFilter<PK9> getFilter()
         {
             var filter = new ShinyHunter<PK9>.ShinyFilter<PK9>();
-            // Species
-            if (cBSpecies.SelectedIndex > 0)
+            // Species - collect all checked species
+            var checkedSpecies = new List<ushort>();
+            for (int i = 0; i < cBSpecies.Items.Count; i++)
             {
-                var sel = cBSpecies.SelectedItem.ToString()!;
-                var spl = sel.Split(" - ");
-                filter.Species = ushort.Parse(spl[0]);
+                if (cBSpecies.GetItemChecked(i) && i > 0) // Skip "Any" at index 0
+                {
+                    var sel = cBSpecies.Items[i].ToString()!;
+                    var spl = sel.Split(" - ");
+                    checkedSpecies.Add(ushort.Parse(spl[0]));
+                }
             }
+            
+            // If "Any" is checked or no species selected, leave filter.Species as null
+            // Otherwise, set the list of species
+            if (checkedSpecies.Count > 0)
+                filter.SpeciesList = checkedSpecies;
 
             // IVs
             for (int i = 0; i < 6; i++)
@@ -287,6 +298,86 @@ namespace PLADumper
             {
                 positions.RemoveAt(listBox1.SelectedIndex);
                 SaveAllAndUpdateUI();
+            }
+        }
+
+        private void btnResetSpecies_Click(object sender, EventArgs e)
+        {
+            // Uncheck all items
+            for (int i = 0; i < cBSpecies.Items.Count; i++)
+            {
+                cBSpecies.SetItemChecked(i, false);
+            }
+            // Check "Any" (index 0)
+            cBSpecies.SetItemChecked(0, true);
+            SaveFilterConfig();
+        }
+
+        private void cBSpecies_ItemCheck(object sender, ItemCheckEventArgs e)
+        {
+            // Save filter config when species selection changes
+            // Use BeginInvoke to ensure the change is applied before saving
+            BeginInvoke(new Action(() => SaveFilterConfig()));
+        }
+
+        private void SaveFilterConfig()
+        {
+            try
+            {
+                var sb = new StringBuilder();
+                // Save checked species indices
+                var checkedIndices = new List<int>();
+                for (int i = 0; i < cBSpecies.Items.Count; i++)
+                {
+                    if (cBSpecies.GetItemChecked(i))
+                        checkedIndices.Add(i);
+                }
+                sb.AppendLine("SpeciesIndices=" + string.Join(",", checkedIndices));
+                
+                File.WriteAllText(filterConfigName, sb.ToString());
+            }
+            catch
+            {
+                // Silently fail if we can't save config
+            }
+        }
+
+        private void LoadFilterConfig()
+        {
+            try
+            {
+                if (!File.Exists(filterConfigName))
+                    return;
+
+                var lines = File.ReadAllLines(filterConfigName);
+                foreach (var line in lines)
+                {
+                    if (line.StartsWith("SpeciesIndices="))
+                    {
+                        var indicesStr = line.Substring("SpeciesIndices=".Length);
+                        if (string.IsNullOrEmpty(indicesStr))
+                            continue;
+
+                        var indices = indicesStr.Split(',').Select(int.Parse).ToList();
+                        
+                        // First uncheck all
+                        for (int i = 0; i < cBSpecies.Items.Count; i++)
+                        {
+                            cBSpecies.SetItemChecked(i, false);
+                        }
+                        
+                        // Then check the saved ones
+                        foreach (var idx in indices)
+                        {
+                            if (idx < cBSpecies.Items.Count)
+                                cBSpecies.SetItemChecked(idx, true);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // If loading fails, just use defaults ("Any" checked)
             }
         }
 

@@ -39,6 +39,7 @@ namespace PLAWarper
             };
 
             public ushort? Species { get; set; } = null;
+            public List<ushort>? SpeciesList { get; set; } = null;
             public byte SizeMinimum { get; set; } = 0;
 
             public ShinyFilter()
@@ -55,9 +56,16 @@ namespace PLAWarper
 
             public bool MatchesFilter(T pk)
             {
-                // Species
-                if (Species.HasValue && pk.Species != Species.Value)
+                // Species - check if species matches any in the list
+                if (SpeciesList != null && SpeciesList.Count > 0)
+                {
+                    if (!SpeciesList.Contains(pk.Species))
+                        return false;
+                }
+                else if (Species.HasValue && pk.Species != Species.Value)
+                {
                     return false;
+                }
                 // Size
                 if (pk is IScaledSize3 pks)
                 {
