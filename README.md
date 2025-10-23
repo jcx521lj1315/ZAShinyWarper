@@ -3,6 +3,9 @@ For warping or shiny hunting with your character in Pokemon Legends: Z-A.
 
 Requires a hacked Switch console running either [sys-botbase](https://github.com/olliz0r/sys-botbase/releases) or [usb-botbase](https://github.com/Koi-3088/USB-Botbase/releases).
 
+![Main window](ZAShinyWarper_Window.png?raw=true "The program itself")
+![Success window](ZAShinyWarper_Success.png?raw=true "Finding a shiny")
+
 ### Shiny hunting setup
 1) Ensure you have sys-botbase or an equivalent installed on your Switch running atmosphere, then create a save backup using something like JKSV.
 2) Open the program and connect to your console. You'll see all your "stashed" shinies.
@@ -27,8 +30,6 @@ All shiny Pokemon from your stash are saved in their incomplete "wild" format in
 * Warping to places nearby.
 * Falling off or warping back on top of buildings multiple times.
 * Warping into the geometry and [falling through the map to your inevitable doom.](https://x.com/berichandev/status/1980471677659279623) This always happens when warping too far away due to the collision LODing.
-
-![Main window](ZAShinyWarper_Window.png?raw=true "The program itself")
 
 Rundown video: https://youtu.be/eKydGGQbS_0 
 
