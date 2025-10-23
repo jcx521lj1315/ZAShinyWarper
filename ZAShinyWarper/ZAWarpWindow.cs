@@ -111,7 +111,7 @@ namespace PLADumper
                 bot = botsys;
                 groupBox1.Enabled = true;
                 shinyHunter.LoadStashedShinies(bot, "sets.txt");
-                MessageBox.Show($"Connected to SysBot (network). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShowdownSets(shinyHunter.StashedShinies)}");
+                MessageBox.Show($"Connected to SysBot (network). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShowdownSets([.. shinyHunter.StashedShinies.Reverse()])}");
                 bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
             }
             catch (Exception ex)
@@ -129,7 +129,7 @@ namespace PLADumper
                 bot = botusb;
                 groupBox1.Enabled = true;
                 shinyHunter.LoadStashedShinies(bot, "sets.txt");
-                MessageBox.Show($"Connected to UsbBot (USB). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShowdownSets(shinyHunter.StashedShinies)}");
+                MessageBox.Show($"Connected to UsbBot (USB). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShowdownSets([.. shinyHunter.StashedShinies.Reverse()])}");
                 bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
             }
             catch (Exception ex)
@@ -295,6 +295,7 @@ namespace PLADumper
             numericUpDownSpawnCheckTime.Enabled = enabled;
             cBWhenShinyFound.Enabled = enabled;
             numericUpDownCamMove.Enabled = enabled;
+            numericUpDownSaveFreq.Enabled = enabled;
         }
 
         // Bot
@@ -372,7 +373,8 @@ namespace PLADumper
                                     cleanUpBot();
                                     bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
                                     btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
-                                    MessageBox.Show($"A shiny matching the filter has been found! Stopping warping.\r\n\r\n{ShowdownParsing.GetShowdownText(pk)}", "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    setFiltersEnableState(true);
+                                    MessageBox.Show($"A shiny matching the filter has been found after {currentWarps} attempts! Stopping warping.\r\n\r\n{ShowdownParsing.GetShowdownText(pk)}", "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                                     break;
                                     //case ShinyFoundAction.CacheAndContinue:
                                     //    MessageBox.Show($"A shiny matching the filter has been found!\r\n\r\n{pk.GetShowdownSet()}");
@@ -408,7 +410,13 @@ namespace PLADumper
                         break;
                     }
 
-                    await Task.Delay(warpInterval).ConfigureAwait(false);
+                    if (pos.flags.Contains("instant"))
+                        continue;
+
+                    if (pos.flags.Contains("halfwait"))
+                        await Task.Delay(warpInterval / 2).ConfigureAwait(false);
+                    else
+                        await Task.Delay(warpInterval).ConfigureAwait(false);
                 }
             }
         }
@@ -417,19 +425,44 @@ namespace PLADumper
     public struct Vector3
     {
         public float x, y, z;
+        public string[] flags = [];
+
+        public Vector3()
+        {
+            x = 0; y = 0; z = 0;
+            flags = [];
+        }
+
+        public Vector3(float x, float y, float z)
+        {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            flags = [];
+        }
 
         public override string ToString()
         {
-            return $"{x},{y},{z}";
+            return $"{x},{y},{z};{string.Join(',', flags)}";
         }
 
         public static Vector3 FromString(string s)
         {
-            var spl = s.Split(',');
+            var prePostFlags = s.Split(';');
+            var spl = prePostFlags[0].Split(',');
             Vector3 v = new Vector3();
             v.x = float.Parse(spl[0]);
             v.y = float.Parse(spl[1]);
             v.z = float.Parse(spl[2]);
+
+            if (prePostFlags.Length > 1)
+            {
+                var nFlags = new List<string>();
+                spl = prePostFlags[1].Split(',');
+                foreach (var str in spl)
+                    nFlags.Add(str);
+                v.flags = nFlags.ToArray();
+            }
 
             return v;
         }

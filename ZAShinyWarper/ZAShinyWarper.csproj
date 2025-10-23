@@ -4,7 +4,7 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>ZAShinyWarper</RootNamespace>
     <AssemblyName>ZAShinyWarper</AssemblyName>
-    <LangVersion>9</LangVersion>
+    <LangVersion>13</LangVersion>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
