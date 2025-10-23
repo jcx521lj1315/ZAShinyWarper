@@ -114,6 +114,7 @@ namespace PLADumper
                 shinyHunter.LoadStashedShinies(bot, "sets.txt");
                 MessageBox.Show($"Connected to SysBot (network). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShowdownSets([.. shinyHunter.StashedShinies.Reverse()])}");
                 bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
+                cleanUpBot();
             }
             catch (Exception ex)
             {
@@ -133,6 +134,7 @@ namespace PLADumper
                 shinyHunter.LoadStashedShinies(bot, "sets.txt");
                 MessageBox.Show($"Connected to UsbBot (USB). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShowdownSets([.. shinyHunter.StashedShinies.Reverse()])}");
                 bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
+                cleanUpBot();
             }
             catch (Exception ex)
             {
