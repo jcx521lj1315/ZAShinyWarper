@@ -290,14 +290,14 @@ namespace PLADumper
 
         private void setFiltersEnableState(bool enabled)
         {
-            cBSpecies.Enabled = enabled;
+            cBSpecies.PerformSafely(() => cBSpecies.Enabled = enabled);
             foreach (var cb in CBIVs)
-                cb.Enabled = enabled;
-            numericUpDownScale.Enabled = enabled;
-            numericUpDownSpawnCheckTime.Enabled = enabled;
-            cBWhenShinyFound.Enabled = enabled;
-            numericUpDownCamMove.Enabled = enabled;
-            numericUpDownSaveFreq.Enabled = enabled;
+                cb.PerformSafely(() => cb.Enabled = enabled);
+            numericUpDownScale.PerformSafely(() => numericUpDownScale.Enabled = enabled);
+            numericUpDownSpawnCheckTime.PerformSafely(() => numericUpDownSpawnCheckTime.Enabled = enabled);
+            cBWhenShinyFound.PerformSafely(() => cBWhenShinyFound.Enabled = enabled);
+            numericUpDownCamMove.PerformSafely(() => numericUpDownCamMove.Enabled = enabled);
+            numericUpDownSaveFreq.PerformSafely(() => numericUpDownSaveFreq.Enabled = enabled);
         }
 
         // Bot
