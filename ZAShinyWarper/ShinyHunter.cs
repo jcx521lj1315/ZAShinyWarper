@@ -39,6 +39,7 @@ namespace PLAWarper
             };
             public List<ushort>? SpeciesList { get; set; } = null;
             public byte SizeMinimum { get; set; } = 0;
+            public byte SizeMaximum { get; set; } = 0;
 
             public ShinyFilter()
             {
@@ -83,6 +84,8 @@ namespace PLAWarper
                 if (pk is IScaledSize3 pks)
                 {
                     if (pks.Scale < SizeMinimum)
+                        return false;
+                    if (pks.Scale > SizeMaximum)
                         return false;
                 }
                 return true;
