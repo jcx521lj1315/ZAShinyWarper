@@ -80,9 +80,16 @@ namespace PLAWarper
             // This is required otherwise the spawn may hog that encounter until it is defeated/captured.
             public bool MatchesFilterSpeciesOrAlpha(T pk)
             {
-                // Species
-                if (Species.HasValue && pk.Species != Species.Value)
+                // Species - check if species matches any in the list
+                if (SpeciesList != null && SpeciesList.Count > 0)
+                {
+                    if (!SpeciesList.Contains(pk.Species))
+                        return false;
+                }
+                else if (Species.HasValue && pk.Species != Species.Value)
+                {
                     return false;
+                }
                 // Size
                 if (pk is IScaledSize3 pks)
                 {
