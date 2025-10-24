@@ -530,6 +530,21 @@ namespace PLADumper
 
         private void cBSpecies_SelectedIndexChanged(object sender, EventArgs e)
         {
+            // Select "Any" if none are selected
+            bool anyChecked = false;
+            for (int i = 0; i < cBSpecies.Items.Count; i++)
+            {
+                if (cBSpecies.GetItemChecked(i))
+                {
+                    anyChecked = true;
+                    break;
+                }
+            }
+            if (!anyChecked)
+            {
+                cBSpecies.SetItemChecked(0, true);
+                return;
+            }
             // Clear everything else if "Any" is selected
             if (cBSpecies.SelectedIndex == 0)
             {
