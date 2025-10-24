@@ -52,7 +52,9 @@
             numericUpDownSpawnCheckTime = new System.Windows.Forms.NumericUpDown();
             label3 = new System.Windows.Forms.Label();
             numericUpDownScale = new System.Windows.Forms.NumericUpDown();
+            numericUpDownScale2 = new System.Windows.Forms.NumericUpDown();
             lblScale = new System.Windows.Forms.Label();
+            lblScale2 = new System.Windows.Forms.Label();
             lblIVSpe = new System.Windows.Forms.Label();
             lblIVSpD = new System.Windows.Forms.Label();
             lblIVSpA = new System.Windows.Forms.Label();
@@ -81,6 +83,7 @@
             ((System.ComponentModel.ISupportInitialize)numericUpDownCamMove).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numericUpDownSpawnCheckTime).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numericUpDownScale).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numericUpDownScale2).BeginInit();
             SuspendLayout();
             // 
             // label1
@@ -272,7 +275,9 @@
             gBShinyHunt.Controls.Add(numericUpDownSpawnCheckTime);
             gBShinyHunt.Controls.Add(label3);
             gBShinyHunt.Controls.Add(numericUpDownScale);
+            gBShinyHunt.Controls.Add(numericUpDownScale2);
             gBShinyHunt.Controls.Add(lblScale);
+            gBShinyHunt.Controls.Add(lblScale2);
             gBShinyHunt.Controls.Add(lblIVSpe);
             gBShinyHunt.Controls.Add(lblIVSpD);
             gBShinyHunt.Controls.Add(lblIVSpA);
@@ -299,7 +304,7 @@
             gBShinyHunt.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             gBShinyHunt.Name = "gBShinyHunt";
             gBShinyHunt.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            gBShinyHunt.Size = new System.Drawing.Size(212, 539);
+            gBShinyHunt.Size = new System.Drawing.Size(212, 567);
             gBShinyHunt.TabIndex = 6;
             gBShinyHunt.TabStop = false;
             gBShinyHunt.Text = "Shiny Hunting";
@@ -370,6 +375,15 @@
             numericUpDownScale.Size = new System.Drawing.Size(120, 23);
             numericUpDownScale.TabIndex = 22;
             // 
+            // numericUpDownScale2
+            // 
+            numericUpDownScale2.Location = new System.Drawing.Point(77, 535);
+            numericUpDownScale2.Maximum = new decimal(new int[] { 255, 0, 0, 0 });
+            numericUpDownScale2.Name = "numericUpDownScale2";
+            numericUpDownScale2.Size = new System.Drawing.Size(120, 23);
+            numericUpDownScale2.TabIndex = 22;
+            numericUpDownScale2.Value = new decimal(new int[] { 255, 0, 0, 0 });
+            // 
             // lblScale
             // 
             lblScale.AutoSize = true;
@@ -378,6 +392,15 @@
             lblScale.Size = new System.Drawing.Size(60, 15);
             lblScale.TabIndex = 21;
             lblScale.Text = "Min scale:";
+            // 
+            // lblScale2
+            // 
+            lblScale2.AutoSize = true;
+            lblScale2.Location = new System.Drawing.Point(14, 535);
+            lblScale2.Name = "lblScale2";
+            lblScale2.Size = new System.Drawing.Size(62, 15);
+            lblScale2.TabIndex = 21;
+            lblScale2.Text = "Max scale:";
             // 
             // lblIVSpe
             // 
@@ -574,7 +597,7 @@
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize = new System.Drawing.Size(553, 560);
+            ClientSize = new System.Drawing.Size(553, 592);
             Controls.Add(gBShinyHunt);
             Controls.Add(button4);
             Controls.Add(label4);
@@ -595,6 +618,7 @@
             ((System.ComponentModel.ISupportInitialize)numericUpDownCamMove).EndInit();
             ((System.ComponentModel.ISupportInitialize)numericUpDownSpawnCheckTime).EndInit();
             ((System.ComponentModel.ISupportInitialize)numericUpDownScale).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numericUpDownScale2).EndInit();
             ResumeLayout(false);
             PerformLayout();
 
@@ -641,7 +665,9 @@
         private System.Windows.Forms.ComboBox cBIVHP;
         private System.Windows.Forms.Label lblIV;
         private System.Windows.Forms.NumericUpDown numericUpDownScale;
+        private System.Windows.Forms.NumericUpDown numericUpDownScale2;
         private System.Windows.Forms.Label lblScale;
+        private System.Windows.Forms.Label lblScale2;
         private System.Windows.Forms.NumericUpDown numericUpDownSpawnCheckTime;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.NumericUpDown numericUpDownCamMove;

@@ -110,6 +110,7 @@ namespace PLADumper
 
             // Size
             filter.SizeMinimum = (byte)numericUpDownScale.Value;
+            filter.SizeMaximum = (byte)numericUpDownScale2.Value;
             return filter;
         }
 
