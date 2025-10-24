@@ -124,7 +124,7 @@ namespace PLADumper
                 groupBox1.Enabled = true;
                 gBShinyHunt.Enabled = true;
                 shinyHunter.LoadStashedShinies(bot, "sets.txt");
-                MessageBox.Show($"Connected to SysBot (network). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShowdownSets([.. shinyHunter.StashedShinies.Reverse()])}");
+                MessageBox.Show($"Connected to SysBot (network). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShinyStashInfo([.. shinyHunter.StashedShinies.Reverse()])}");
                 bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
                 cleanUpBot();
             }
@@ -144,7 +144,7 @@ namespace PLADumper
                 groupBox1.Enabled = true;
                 gBShinyHunt.Enabled = true;
                 shinyHunter.LoadStashedShinies(bot, "sets.txt");
-                MessageBox.Show($"Connected to UsbBot (USB). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShowdownSets([.. shinyHunter.StashedShinies.Reverse()])}");
+                MessageBox.Show($"Connected to UsbBot (USB). The following shinies are stashed on your save currently: \r\n{shinyHunter.GetShinyStashInfo([.. shinyHunter.StashedShinies.Reverse()])}");
                 bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
                 cleanUpBot();
             }
@@ -444,6 +444,9 @@ namespace PLADumper
             var camSpeed = (int)numericUpDownCamMove.Value;
             var action = (ShinyFoundAction)cBWhenShinyFound.SelectedItem!;
             var saveFrequency = (int)numericUpDownSaveFreq.Value;
+
+            int shiniesFound = 0;
+
             currentWarps = 0;
 
             warping = true;
@@ -467,7 +470,8 @@ namespace PLADumper
                     var newShinies = shinyHunter.DifferentShinies;
                     foreach (var pk in newShinies)
                     {
-                        if (filter.MatchesFilter(pk))
+                        shiniesFound++;
+                        if (filter.MatchesFilter(pk.PKM))
                         {
                             // Found one
                             switch (action)
@@ -478,15 +482,15 @@ namespace PLADumper
                                     bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
                                     btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
                                     setFiltersEnableState(true);
-                                    MessageBox.Show($"A shiny matching the filter has been found after {currentWarps} attempts! Stopping warping.\r\n\r\n{ShowdownParsing.GetShowdownText(pk)}\r\n" +
-                                                         (pk.Scale == 255 ? "This Pokemon is ALPHA!" : "This Pokemon is not an alpha"), "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    MessageBox.Show($"A shiny matching the filter has been found after {currentWarps} attempts! Stopping warping.\r\n\r\n{pk}\r\n" +
+                                                         (pk.PKM.Scale == 255 ? "This Pokemon is ALPHA!" : "This Pokemon is not an alpha"), "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                                     break;
                             }
                         }
                         else // Notify the user anyway, but don't stop spawning/warping. The user should know that a shiny is found because it will occupy one of the shiny stash slots until it is removed
                         {
-                            MessageBox.Show($"The following shiny has been found, but does not match your filter. You may wish to remove it such that it doesn't occupy one of your shiny stash slots.\r\n\r\n{ShowdownParsing.GetShowdownText(pk)}\r\n" +
-                                                         (pk.Scale == 255 ? "This Pokemon is ALPHA!" : "This Pokemon is not an alpha"), "Found something we don't want!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            MessageBox.Show($"The following shiny has been found, but does not match your filter. You may wish to remove it such that it doesn't occupy one of your shiny stash slots.\r\n\r\n{pk}\r\n" +
+                                                         (pk.PKM.Scale == 255 ? "This Pokemon is ALPHA!" : "This Pokemon is not an alpha"), "Found something we don't want!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
                     }
                 }
