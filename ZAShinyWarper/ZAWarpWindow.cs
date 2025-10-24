@@ -392,6 +392,7 @@ namespace PLADumper
             numericUpDownCamMove.PerformSafely(() => numericUpDownCamMove.Enabled = enabled);
             numericUpDownSaveFreq.PerformSafely(() => numericUpDownSaveFreq.Enabled = enabled);
             groupBox1.PerformSafely(() => groupBox1.Enabled = enabled);
+            btnResetSpecies.PerformSafely(() => btnResetSpecies.Enabled = enabled);
         }
 
         // Bot
