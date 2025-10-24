@@ -130,18 +130,18 @@
             groupBox1.Controls.Add(button6);
             groupBox1.Controls.Add(button5);
             groupBox1.Enabled = false;
-            groupBox1.Location = new System.Drawing.Point(19, 125);
+            groupBox1.Location = new System.Drawing.Point(15, 125);
             groupBox1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            groupBox1.Size = new System.Drawing.Size(300, 389);
+            groupBox1.Size = new System.Drawing.Size(303, 425);
             groupBox1.TabIndex = 3;
             groupBox1.TabStop = false;
             groupBox1.Text = "Editing";
             // 
             // button9
             // 
-            button9.Location = new System.Drawing.Point(200, 140);
+            button9.Location = new System.Drawing.Point(204, 166);
             button9.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             button9.Name = "button9";
             button9.Size = new System.Drawing.Size(88, 27);
@@ -152,7 +152,7 @@
             // 
             // button3
             // 
-            button3.Location = new System.Drawing.Point(105, 138);
+            button3.Location = new System.Drawing.Point(108, 166);
             button3.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             button3.Name = "button3";
             button3.Size = new System.Drawing.Size(88, 27);
@@ -163,7 +163,7 @@
             // 
             // button2
             // 
-            button2.Location = new System.Drawing.Point(10, 140);
+            button2.Location = new System.Drawing.Point(12, 166);
             button2.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             button2.Name = "button2";
             button2.Size = new System.Drawing.Size(88, 27);
@@ -175,16 +175,16 @@
             // listBox1
             // 
             listBox1.FormattingEnabled = true;
-            listBox1.Location = new System.Drawing.Point(7, 22);
+            listBox1.Location = new System.Drawing.Point(10, 22);
             listBox1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             listBox1.Name = "listBox1";
-            listBox1.Size = new System.Drawing.Size(285, 109);
+            listBox1.Size = new System.Drawing.Size(285, 139);
             listBox1.TabIndex = 14;
             // 
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new System.Drawing.Point(0, 285);
+            label2.Location = new System.Drawing.Point(12, 296);
             label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             label2.Name = "label2";
             label2.Size = new System.Drawing.Size(61, 15);
@@ -193,7 +193,7 @@
             // 
             // numericUpDown1
             // 
-            numericUpDown1.Location = new System.Drawing.Point(210, 348);
+            numericUpDown1.Location = new System.Drawing.Point(216, 388);
             numericUpDown1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             numericUpDown1.Name = "numericUpDown1";
             numericUpDown1.Size = new System.Drawing.Size(76, 23);
@@ -202,7 +202,7 @@
             // 
             // button8
             // 
-            button8.Location = new System.Drawing.Point(9, 312);
+            button8.Location = new System.Drawing.Point(12, 333);
             button8.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             button8.Name = "button8";
             button8.Size = new System.Drawing.Size(88, 27);
@@ -213,7 +213,7 @@
             // 
             // button7
             // 
-            button7.Location = new System.Drawing.Point(198, 312);
+            button7.Location = new System.Drawing.Point(204, 333);
             button7.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             button7.Name = "button7";
             button7.Size = new System.Drawing.Size(88, 27);
@@ -224,7 +224,7 @@
             // 
             // button6
             // 
-            button6.Location = new System.Drawing.Point(104, 336);
+            button6.Location = new System.Drawing.Point(108, 372);
             button6.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             button6.Name = "button6";
             button6.Size = new System.Drawing.Size(88, 27);
@@ -235,7 +235,7 @@
             // 
             // button5
             // 
-            button5.Location = new System.Drawing.Point(104, 285);
+            button5.Location = new System.Drawing.Point(108, 296);
             button5.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             button5.Name = "button5";
             button5.Size = new System.Drawing.Size(88, 27);
@@ -247,7 +247,7 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new System.Drawing.Point(61, 517);
+            label4.Location = new System.Drawing.Point(55, 555);
             label4.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             label4.Name = "label4";
             label4.Size = new System.Drawing.Size(216, 30);
@@ -369,18 +369,18 @@
             // 
             // numericUpDownScale
             // 
-            numericUpDownScale.Location = new System.Drawing.Point(77, 508);
+            numericUpDownScale.Location = new System.Drawing.Point(80, 508);
             numericUpDownScale.Maximum = new decimal(new int[] { 255, 0, 0, 0 });
             numericUpDownScale.Name = "numericUpDownScale";
-            numericUpDownScale.Size = new System.Drawing.Size(120, 23);
+            numericUpDownScale.Size = new System.Drawing.Size(117, 23);
             numericUpDownScale.TabIndex = 22;
             // 
             // numericUpDownScale2
             // 
-            numericUpDownScale2.Location = new System.Drawing.Point(77, 535);
+            numericUpDownScale2.Location = new System.Drawing.Point(80, 535);
             numericUpDownScale2.Maximum = new decimal(new int[] { 255, 0, 0, 0 });
             numericUpDownScale2.Name = "numericUpDownScale2";
-            numericUpDownScale2.Size = new System.Drawing.Size(120, 23);
+            numericUpDownScale2.Size = new System.Drawing.Size(117, 23);
             numericUpDownScale2.TabIndex = 22;
             numericUpDownScale2.Value = new decimal(new int[] { 255, 0, 0, 0 });
             // 
@@ -396,7 +396,7 @@
             // lblScale2
             // 
             lblScale2.AutoSize = true;
-            lblScale2.Location = new System.Drawing.Point(14, 535);
+            lblScale2.Location = new System.Drawing.Point(14, 538);
             lblScale2.Name = "lblScale2";
             lblScale2.Size = new System.Drawing.Size(62, 15);
             lblScale2.TabIndex = 21;
@@ -547,7 +547,7 @@
             // lblFilter
             // 
             lblFilter.AutoSize = true;
-            lblFilter.Location = new System.Drawing.Point(9, 261);
+            lblFilter.Location = new System.Drawing.Point(12, 261);
             lblFilter.Name = "lblFilter";
             lblFilter.Size = new System.Drawing.Size(33, 15);
             lblFilter.TabIndex = 4;
@@ -597,7 +597,7 @@
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize = new System.Drawing.Size(553, 592);
+            ClientSize = new System.Drawing.Size(553, 594);
             Controls.Add(gBShinyHunt);
             Controls.Add(button4);
             Controls.Add(label4);
