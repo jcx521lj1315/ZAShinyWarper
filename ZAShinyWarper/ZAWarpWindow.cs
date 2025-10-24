@@ -405,6 +405,20 @@ namespace PLADumper
             }
         }
 
+        private async Task saveGame()
+        {
+            bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
+            await Task.Delay(1_000).ConfigureAwait(false);
+            bot.SendBytes(Encoding.ASCII.GetBytes("click R\r\n"));
+            await Task.Delay(1_000).ConfigureAwait(false);
+            bot.SendBytes(Encoding.ASCII.GetBytes("click A\r\n"));
+            await Task.Delay(5_000).ConfigureAwait(false); // wait for save
+            bot.SendBytes(Encoding.ASCII.GetBytes("click B\r\n"));
+            await Task.Delay(0_800).ConfigureAwait(false);
+            bot.SendBytes(Encoding.ASCII.GetBytes("click B\r\n"));
+            await Task.Delay(0_800).ConfigureAwait(false);
+        }
+
         private async void btnWarp_Click(object sender, EventArgs e)
         {
             if (warping)
@@ -422,7 +436,7 @@ namespace PLADumper
                 return;
             }
 
-            var fitler = getFilter();
+            var filter = getFilter();
             var warpInterval = (int)numericUpDownSpawnCheckTime.Value;
             var camSpeed = (int)numericUpDownCamMove.Value;
             var action = (ShinyFoundAction)cBWhenShinyFound.SelectedItem!;
@@ -441,19 +455,7 @@ namespace PLADumper
             {
                 currentWarps++;
                 if (currentWarps % saveFrequency == 0)
-                {
-                    // Save
-                    bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
-                    await Task.Delay(1_000).ConfigureAwait(false);
-                    bot.SendBytes(Encoding.ASCII.GetBytes("click R\r\n"));
-                    await Task.Delay(1_000).ConfigureAwait(false);
-                    bot.SendBytes(Encoding.ASCII.GetBytes("click A\r\n"));
-                    await Task.Delay(5_000).ConfigureAwait(false); // wait for save
-                    bot.SendBytes(Encoding.ASCII.GetBytes("click B\r\n"));
-                    await Task.Delay(0_800).ConfigureAwait(false);
-                    bot.SendBytes(Encoding.ASCII.GetBytes("click B\r\n"));
-                    await Task.Delay(0_800).ConfigureAwait(false);
-                }
+                    await saveGame().ConfigureAwait(false);
 
                 // Check shinies first as a new one may have spawned before we move
                 var newFound = shinyHunter.LoadStashedShinies(bot, "sets.txt");
@@ -462,7 +464,7 @@ namespace PLADumper
                     var newShinies = shinyHunter.DifferentShinies;
                     foreach (var pk in newShinies)
                     {
-                        if (fitler.MatchesFilter(pk))
+                        if (filter.MatchesFilter(pk))
                         {
                             // Found one
                             switch (action)
@@ -476,10 +478,12 @@ namespace PLADumper
                                     MessageBox.Show($"A shiny matching the filter has been found after {currentWarps} attempts! Stopping warping.\r\n\r\n{ShowdownParsing.GetShowdownText(pk)}\r\n" +
                                                          (pk.Scale == 255 ? "This Pokemon is ALPHA!" : "This Pokemon is not an alpha"), "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                                     break;
-                                    //case ShinyFoundAction.CacheAndContinue:
-                                    //    MessageBox.Show($"A shiny matching the filter has been found!\r\n\r\n{pk.GetShowdownSet()}");
-                                    //    break;
                             }
+                        }
+                        else // Notify the user anyway, but don't stop spawning/warping. The user should know that a shiny is found because it will occupy one of the shiny stash slots until it is removed
+                        {
+                            MessageBox.Show($"The following shiny has been found, but does not match your filter. You may wish to remove it such that it doesn't occupy one of your shiny stash slots.\r\n\r\n{ShowdownParsing.GetShowdownText(pk)}\r\n" +
+                                                         (pk.Scale == 255 ? "This Pokemon is ALPHA!" : "This Pokemon is not an alpha"), "Found something we don't want!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
                     }
                 }
@@ -494,11 +498,11 @@ namespace PLADumper
                     int tries = 25;
                     for (; tries > 0; --tries)
                     {
-                        // check for less than 0.02 difference to avoid float precision issues
+                        // check for less than 0.02 difference to avoid float precision issues. We only care about Y here as X/Z may vary due to terrain
                         if (GetPos().y >= pos.y - 0.02f && GetPos().y <= pos.y + 0.02f)
                             break;
                         SetPos(pos.x, pos.y + (tries > 20 ? 1 : 0), pos.z);
-                        await Task.Delay(1_500).ConfigureAwait(false);
+                        await Task.Delay(1_200).ConfigureAwait(false);
                     }
 
                     if (tries == 0) // failed to load

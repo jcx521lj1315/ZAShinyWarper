@@ -1,8 +1,8 @@
-﻿using System;
+﻿using LibUsbDotNet;
+using LibUsbDotNet.Main;
+using System;
 using System.Collections.Generic;
 using System.Threading;
-using LibUsbDotNet;
-using LibUsbDotNet.Main;
 
 namespace NHSE.Injection
 {
@@ -227,7 +227,10 @@ namespace NHSE.Injection
 
         void IRAMReadWriter.SendBytes(byte[] encodeData)
         {
-            throw new NotImplementedException();
+            lock (_sync)
+            {
+                SendInternal(encodeData);
+            }
         }
 
         byte[] IRAMReadWriter.GetVersion()
@@ -242,7 +245,17 @@ namespace NHSE.Injection
 
         ulong IRAMReadWriter.FollowMainPointer(long[] jumps)
         {
-            throw new NotImplementedException();
+            lock (_sync)
+            {
+                var cmd = SwitchCommand.FollowMainPointer(jumps);
+                SendInternal(cmd);
+
+                // give it time to push data back
+                Thread.Sleep(1);
+                var buffer = new byte[17];
+                var _ = ReadInternal(buffer);
+                return BitConverter.ToUInt64(buffer, 0);
+            }
         }
 
         byte[] IRAMReadWriter.PeekMainPointer(long[] jumps, int length)

@@ -56,22 +56,8 @@ namespace PLAWarper
 
             public bool MatchesFilter(T pk)
             {
-                // Species - check if species matches any in the list
-                if (SpeciesList != null && SpeciesList.Count > 0)
-                {
-                    if (!SpeciesList.Contains(pk.Species))
-                        return false;
-                }
-                else if (Species.HasValue && pk.Species != Species.Value)
-                {
+                if (!MatchesFilterSpeciesOrAlpha(pk))
                     return false;
-                }
-                // Size
-                if (pk is IScaledSize3 pks)
-                {
-                    if (pks.Scale < SizeMinimum)
-                        return false;
-                }
                 // IVs
                 for (int i = 0; i < 6; i++)
                 {
@@ -87,6 +73,21 @@ namespace PLAWarper
                                 return false;
                             break;
                     }
+                }
+                return true;
+            }
+
+            // This is required otherwise the spawn may hog that encounter until it is defeated/captured.
+            public bool MatchesFilterSpeciesOrAlpha(T pk)
+            {
+                // Species
+                if (Species.HasValue && pk.Species != Species.Value)
+                    return false;
+                // Size
+                if (pk is IScaledSize3 pks)
+                {
+                    if (pks.Scale < SizeMinimum)
+                        return false;
                 }
                 return true;
             }
