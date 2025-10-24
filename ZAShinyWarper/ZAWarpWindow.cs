@@ -96,7 +96,7 @@ namespace PLADumper
                     checkedSpecies.Add(ushort.Parse(spl[0]));
                 }
             }
-            
+
             // If "Any" is checked or no species selected, leave filter.Species as null
             // Otherwise, set the list of species
             if (checkedSpecies.Count > 0)
@@ -333,7 +333,7 @@ namespace PLADumper
                         checkedIndices.Add(i);
                 }
                 sb.AppendLine("SpeciesIndices=" + string.Join(",", checkedIndices));
-                
+
                 File.WriteAllText(filterConfigName, sb.ToString());
             }
             catch
@@ -359,13 +359,13 @@ namespace PLADumper
                             continue;
 
                         var indices = indicesStr.Split(',').Select(int.Parse).ToList();
-                        
+
                         // First uncheck all
                         for (int i = 0; i < cBSpecies.Items.Count; i++)
                         {
                             cBSpecies.SetItemChecked(i, false);
                         }
-                        
+
                         // Then check the saved ones
                         foreach (var idx in indices)
                         {
@@ -522,6 +522,22 @@ namespace PLADumper
                     else
                         await Task.Delay(warpInterval).ConfigureAwait(false);
                 }
+            }
+        }
+
+        private void cBSpecies_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            // Clear everything else if "Any" is selected
+            if (cBSpecies.SelectedIndex == 0)
+            {
+                for (int i = 1; i < cBSpecies.Items.Count; i++)
+                {
+                    cBSpecies.SetItemChecked(i, false);
+                }
+            }
+            else // Clear "Any" if anything else is selected
+            {
+                cBSpecies.SetItemChecked(0, false);
             }
         }
     }

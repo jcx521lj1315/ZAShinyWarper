@@ -37,8 +37,6 @@ namespace PLAWarper
                 IVType.Any,
                 IVType.Any
             };
-
-            public ushort? Species { get; set; } = null;
             public List<ushort>? SpeciesList { get; set; } = null;
             public byte SizeMinimum { get; set; } = 0;
 
@@ -47,12 +45,7 @@ namespace PLAWarper
 
             }
 
-            public ShinyFilter(IVType[] iVs, ushort species, byte sizeMin)
-            {
-                IVs = iVs;
-                Species = species;
-                SizeMinimum = sizeMin;
-            }
+            public ShinyFilter(IVType[] iVs, ushort species, byte sizeMin) { }
 
             public bool MatchesFilter(T pk)
             {
@@ -85,10 +78,6 @@ namespace PLAWarper
                 {
                     if (!SpeciesList.Contains(pk.Species))
                         return false;
-                }
-                else if (Species.HasValue && pk.Species != Species.Value)
-                {
-                    return false;
                 }
                 // Size
                 if (pk is IScaledSize3 pks)

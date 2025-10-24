@@ -131,7 +131,7 @@
             groupBox1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            groupBox1.Size = new System.Drawing.Size(300, 346);
+            groupBox1.Size = new System.Drawing.Size(300, 389);
             groupBox1.TabIndex = 3;
             groupBox1.TabStop = false;
             groupBox1.Text = "Editing";
@@ -181,7 +181,7 @@
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new System.Drawing.Point(7, 235);
+            label2.Location = new System.Drawing.Point(0, 285);
             label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             label2.Name = "label2";
             label2.Size = new System.Drawing.Size(61, 15);
@@ -190,7 +190,7 @@
             // 
             // numericUpDown1
             // 
-            numericUpDown1.Location = new System.Drawing.Point(217, 298);
+            numericUpDown1.Location = new System.Drawing.Point(210, 348);
             numericUpDown1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             numericUpDown1.Name = "numericUpDown1";
             numericUpDown1.Size = new System.Drawing.Size(76, 23);
@@ -199,7 +199,7 @@
             // 
             // button8
             // 
-            button8.Location = new System.Drawing.Point(16, 262);
+            button8.Location = new System.Drawing.Point(9, 312);
             button8.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             button8.Name = "button8";
             button8.Size = new System.Drawing.Size(88, 27);
@@ -210,7 +210,7 @@
             // 
             // button7
             // 
-            button7.Location = new System.Drawing.Point(205, 262);
+            button7.Location = new System.Drawing.Point(198, 312);
             button7.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             button7.Name = "button7";
             button7.Size = new System.Drawing.Size(88, 27);
@@ -221,7 +221,7 @@
             // 
             // button6
             // 
-            button6.Location = new System.Drawing.Point(111, 286);
+            button6.Location = new System.Drawing.Point(104, 336);
             button6.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             button6.Name = "button6";
             button6.Size = new System.Drawing.Size(88, 27);
@@ -232,7 +232,7 @@
             // 
             // button5
             // 
-            button5.Location = new System.Drawing.Point(111, 235);
+            button5.Location = new System.Drawing.Point(104, 285);
             button5.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             button5.Name = "button5";
             button5.Size = new System.Drawing.Size(88, 27);
@@ -244,7 +244,7 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new System.Drawing.Point(63, 474);
+            label4.Location = new System.Drawing.Point(61, 517);
             label4.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             label4.Name = "label4";
             label4.Size = new System.Drawing.Size(216, 30);
@@ -500,6 +500,7 @@
             cBSpecies.Size = new System.Drawing.Size(193, 94);
             cBSpecies.TabIndex = 6;
             cBSpecies.ItemCheck += cBSpecies_ItemCheck;
+            cBSpecies.SelectedIndexChanged += cBSpecies_SelectedIndexChanged;
             // 
             // btnResetSpecies
             // 
