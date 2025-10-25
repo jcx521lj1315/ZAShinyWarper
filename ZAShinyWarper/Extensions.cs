@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace System
@@ -312,5 +313,11 @@ public static class CrossThreadExtensions
         {
             action(p1, p2);
         }
+    }
+
+    public static void DoThreaded(Action action)
+    {
+        var thread = new Thread(() => action());
+        thread.Start();
     }
 }

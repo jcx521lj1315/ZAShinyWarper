@@ -92,22 +92,38 @@ namespace PLAWarper
             }
         }
 
+        public class StashedShiny<T> where T : PKM, new ()
+        {
+            public T PKM { get; private set; }
+            public ulong LocationHash { get; private set; } = 0;
+            public uint EncryptionConstant => PKM.EncryptionConstant;
+
+            public StashedShiny(T pk, ulong locHash)
+            {
+                PKM = pk;
+                LocationHash = locHash;
+            }
+
+            public override string ToString() => $"Location hash: {LocationHash:X16}\r\n" + ShowdownParsing.GetShowdownText(PKM) + "\r\n";
+            
+        }
+
         private const int STASHED_SHINIES_MAX = 10;
         private const int PA9_SIZE = 0x158;
         private const int PA9_BUFFER = 0x1F0;
         private const string STASH_FOLDER = "StashedShinies";
         
-        private readonly long[] jumpsPos = new long[] { 0x5F0B250, 0x120, 0x168 }; // [[[main+5F0B250]+120]+168]+08
+        private readonly long[] jumpsPos = new long[] { 0x5F0B250, 0x120, 0x168 }; // [[[main+5F0B250]+120]+168]
 
-        public IList<T> PreviousStashedShinies { get; private set; } = new List<T>();
-        public IList<T> StashedShinies { get; private set; } = new List<T>();
-        public IList<T> DifferentShinies { get; private set; } = new List<T>();
+        public IList<StashedShiny<T>> PreviousStashedShinies { get; private set; } = [];
+        public IList<StashedShiny<T>> StashedShinies { get; private set; } = [];
+        public IList<StashedShiny<T>> DifferentShinies { get; private set; } = [];
 
         public ShinyFilter<T> Filter { get; private set; } = new ShinyFilter<T>();
 
         private ulong getShinyStashOffset(IRAMReadWriter bot)
         {
-            return bot.FollowMainPointer(jumpsPos) + 0x08;
+            return bot.FollowMainPointer(jumpsPos);
         }
 
         /// <summary>
@@ -120,21 +136,23 @@ namespace PLAWarper
         {
             var offs = getShinyStashOffset(bot);
             PreviousStashedShinies = StashedShinies;
-            StashedShinies = new List<T>();
+            StashedShinies = new List<StashedShiny<T>>();
 
             if (!Directory.Exists(STASH_FOLDER))
                 Directory.CreateDirectory(STASH_FOLDER);
 
             for (int i = 0; i < STASHED_SHINIES_MAX; i++)
             {
-                var data = bot.ReadBytes(offs + (ulong)(i * PA9_BUFFER), PA9_SIZE, RWMethod.Absolute);
+                var data = bot.ReadBytes(offs + (ulong)(i * PA9_BUFFER), PA9_SIZE + 8, RWMethod.Absolute);
                 var construct = typeof(T).GetConstructor(new Type[1] { typeof(Memory<byte>) });
                 Debug.Assert(construct != null, "PKM type must have a Memory<byte> constructor");
 
-                var pk = (T)construct.Invoke(new object[] { new Memory<byte>(data) });
+                var pk = (T)construct.Invoke(new object[] { new Memory<byte>(data[8..]) });
+                var location = BitConverter.ToUInt64(data, 0);
                 if (pk.Species != 0)
                 {
-                    StashedShinies.Add(pk);
+                    var stashed = new StashedShiny<T>(pk, location);
+                    StashedShinies.Add(stashed);
 
                     var fileName = Path.Combine(STASH_FOLDER, pk.FileName);
                     File.WriteAllBytes(fileName, pk.DecryptedPartyData);
@@ -142,11 +160,20 @@ namespace PLAWarper
             }
 
             if (!string.IsNullOrEmpty(path))
-                File.WriteAllText(path, GetShowdownSets(StashedShinies));
+                File.WriteAllText(path, GetShinyStashInfo(StashedShinies));
 
-            //DifferentShinies = PreviousStashedShinies.Where(pk => StashedShinies.Any(x => x.EncryptionConstant == pk.EncryptionConstant)).ToList();
             DifferentShinies = StashedShinies.Where(pk => !PreviousStashedShinies.Any(x => x.EncryptionConstant == pk.EncryptionConstant)).ToList();
             return DifferentShinies.Any();
+        }
+
+        public string GetShinyStashInfo(IList<StashedShiny<T>> stash)
+        {
+            var info = new StringBuilder();
+            foreach (var pk in stash)
+            {
+                info.AppendLine(pk.ToString());
+            }
+            return info.ToString();
         }
 
         public string GetShowdownSets(IList<T> pkms)
