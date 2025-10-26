@@ -11,7 +11,7 @@ namespace PLAWarper
 {
     public static class ShinyRollChecker<T> where T : PKM, new()
     {
-        public static int CheckValidDirtyZARNG(T pkm, int fivCheck = -1) // Dirty placeholder until we have a proper encounter/param input, partially leveraged from PKHeX
+        public static (int?, ulong?) CheckValidDirtyZARNG(T pkm, int fivCheck = -1) // Dirty placeholder until we have a proper encounter/param input, partially leveraged from PKHeX
         {
             var p = new GenerateParam9();
             var fiv = fivCheck == -1 ? pkm.FlawlessIVCount : fivCheck;
@@ -70,11 +70,11 @@ namespace PLAWarper
                 if (pkm.IV_SPE != ivs[5])
                     continue;
                 Console.WriteLine($"Valid seed: {s} / EC: {ec} / {pkm.FileName} Rolls: {tries}");
-                return tries;
+                return (tries, s);
             }
             if (fiv > 0) // no encounter data, we don't know if we naturally rolled flawless IVs
                 return CheckValidDirtyZARNG(pkm, fiv - 1);
-            return -1;
+            return (null, null);
         }
     }
 }
