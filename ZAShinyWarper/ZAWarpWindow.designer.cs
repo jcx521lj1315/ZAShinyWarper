@@ -32,6 +32,7 @@ namespace PLADumper
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ZAWarpWindow));
             label1 = new Label();
             textBox1 = new TextBox();
             button1 = new Button();
@@ -785,9 +786,9 @@ namespace PLADumper
             btnScreenOff.Text = "Screen Off";
             btnScreenOff.UseVisualStyleBackColor = true;
             btnScreenOff.Click += OnClickScreenOff;
-            //
+            // 
             // ShinyInfo
-            //
+            // 
             ShinyInfo.AutoPopDelay = 30000;
             ShinyInfo.InitialDelay = 750;
             ShinyInfo.ReshowDelay = 1000;
@@ -807,6 +808,7 @@ namespace PLADumper
             Controls.Add(button1);
             Controls.Add(textBox1);
             Controls.Add(label1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(4, 3, 4, 3);
             Name = "ZAWarpWindow";
             StartPosition = FormStartPosition.CenterScreen;
