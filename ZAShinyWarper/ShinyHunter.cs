@@ -13,8 +13,8 @@ namespace ZAWarper
     public enum ShinyFoundAction
     {
         StopOnFound,
-        CacheAndContinue,
-        Find10AndStop
+        StopAtFullCache,
+        CacheAndContinue
     }
 
     public enum IVType
