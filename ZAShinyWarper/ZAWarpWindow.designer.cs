@@ -32,6 +32,7 @@
             textBox1 = new System.Windows.Forms.TextBox();
             button1 = new System.Windows.Forms.Button();
             groupBox1 = new System.Windows.Forms.GroupBox();
+            btnZ = new System.Windows.Forms.Button();
             button9 = new System.Windows.Forms.Button();
             button3 = new System.Windows.Forms.Button();
             button2 = new System.Windows.Forms.Button();
@@ -119,6 +120,7 @@
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(btnZ);
             groupBox1.Controls.Add(button9);
             groupBox1.Controls.Add(button3);
             groupBox1.Controls.Add(button2);
@@ -138,6 +140,17 @@
             groupBox1.TabIndex = 3;
             groupBox1.TabStop = false;
             groupBox1.Text = "Editing";
+            // 
+            // btnZ
+            // 
+            btnZ.Location = new System.Drawing.Point(108, 333);
+            btnZ.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            btnZ.Name = "btnZ";
+            btnZ.Size = new System.Drawing.Size(88, 27);
+            btnZ.TabIndex = 18;
+            btnZ.Text = "Y";
+            btnZ.UseVisualStyleBackColor = true;
+            btnZ.Click += btnZ_Click;
             // 
             // button9
             // 
@@ -398,7 +411,7 @@
             lblScale2.AutoSize = true;
             lblScale2.Location = new System.Drawing.Point(14, 538);
             lblScale2.Name = "lblScale2";
-            lblScale2.Size = new System.Drawing.Size(62, 15);
+            lblScale2.Size = new System.Drawing.Size(61, 15);
             lblScale2.TabIndex = 21;
             lblScale2.Text = "Max scale:";
             // 
@@ -674,6 +687,7 @@
         private System.Windows.Forms.Label lblCam;
         private System.Windows.Forms.NumericUpDown numericUpDownSaveFreq;
         private System.Windows.Forms.Label lblSaveFreq;
+        private System.Windows.Forms.Button btnZ;
     }
 }
 

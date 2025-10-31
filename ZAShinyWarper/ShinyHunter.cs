@@ -14,7 +14,8 @@ namespace PLAWarper
     public enum ShinyFoundAction
     {
         StopOnFound,
-        CacheAndContinue
+        CacheAndContinue,
+        Find10AndStop
     }
 
     public enum IVType
