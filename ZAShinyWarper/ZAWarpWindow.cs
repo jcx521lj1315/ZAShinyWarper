@@ -173,6 +173,18 @@ namespace PLADumper
             bot.WriteBytes(BitConverter.GetBytes(yn), ramOffset + 8, RWMethod.Absolute);
         }
 
+        private void MovePlayerZ()
+        {
+            int stepOffset = (int)numericUpDown1.Value;
+            ulong ramOffset = getPcoordOfs();
+
+            var bytes = bot.ReadBytes(ramOffset, 12, RWMethod.Absolute);
+            float zn = BitConverter.ToSingle(bytes, 4);
+            zn += stepOffset;
+
+            bot.WriteBytes(BitConverter.GetBytes(zn), ramOffset + 4, RWMethod.Absolute);
+        }
+
         private Vector3 GetPos()
         {
             ulong ramOffset = getPcoordOfs();
@@ -221,6 +233,11 @@ namespace PLADumper
         private void button7_Click(object sender, EventArgs e)
         {
             MovePlayer(-1, 0);
+        }
+
+        private void btnZ_Click(object sender, EventArgs e)
+        {
+            MovePlayerZ();
         }
 
         private void button2_Click_1(object sender, EventArgs e)
@@ -471,7 +488,7 @@ namespace PLADumper
                     foreach (var pk in newShinies)
                     {
                         shiniesFound++;
-                        if (filter.MatchesFilter(pk.PKM))
+                        if (filter.MatchesFilter(pk.PKM) || action == ShinyFoundAction.Find10AndStop)
                         {
                             // Found one
                             switch (action)
@@ -484,6 +501,22 @@ namespace PLADumper
                                     setFiltersEnableState(true);
                                     MessageBox.Show($"A shiny matching the filter has been found after {currentWarps} attempts! Stopping warping.\r\n\r\n{pk}\r\n" +
                                                          (pk.PKM.Scale == 255 ? "This Pokemon is ALPHA!" : "This Pokemon is not an alpha"), "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    break;
+                                case ShinyFoundAction.Find10AndStop:
+                                    CrossThreadExtensions.DoThreaded(() =>
+                                    {
+                                        MessageBox.Show($"The following shiny has been found ({shiniesFound}/10).\r\n\r\n{pk}\r\n" +
+                                                                     (pk.PKM.Scale == 255 ? "This Pokemon is ALPHA!" : "This Pokemon is not an alpha"), "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    });
+                                    if (shiniesFound >= 10)
+                                    {
+                                        warping = false;
+                                        cleanUpBot();
+                                        bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
+                                        btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
+                                        setFiltersEnableState(true);
+                                        MessageBox.Show($"10 shinies have been found after {currentWarps} attempts! Stopping warping.", "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                    }
                                     break;
                             }
                         }
