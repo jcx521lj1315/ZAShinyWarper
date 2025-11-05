@@ -25,7 +25,7 @@ namespace ZAShinyWarper.Hunting
         Clear = 0,
         Overcast = 1,
         Rain = 2,
-        StringWinds = 3,
+        StrongWinds = 3,
         Windy = 5,        
         MildWinds = 7,
         Fog = 8,
