@@ -1246,7 +1246,8 @@ namespace ZAShinyWarper
             {
                 title = $"{(pk.IsAlpha ? "Alpha " : "")}Shiny {species} Found!",
                 description = showdownSet,
-                image = new { url = imageUrl.Trim() }
+                image = new { url = imageUrl.Trim() },
+                color = pk.PersonalInfo.Color
             };
 
             var failedPosts = new List<string>();
