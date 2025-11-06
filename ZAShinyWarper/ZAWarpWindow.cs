@@ -1009,15 +1009,15 @@ namespace ZAShinyWarper
                         else if (!matchesFilter) // No match, still room in cache
                         {
                             ShowUnwantedShinyMessage(pk);
-                        }
+                        }             
+
+                        if (shouldSendEmbed)
+                            await SendWebhook(pk.ToShowdownString(), pk.PKM);
 
                         if (shouldStop)
                         {
                             StopWarping(stopMessage);
                         }
-
-                        if (shouldSendEmbed)
-                            await SendWebhook(pk.ToShowdownString(), pk.PKM);
                     }
 
                     // Helper methods
