@@ -330,8 +330,6 @@ namespace ZAShinyWarper.Hunting
 
         private async Task MonitorWeather(IRAMReadWriter bot, CancellationToken token)
         {
-            long[] weatherPointer = [0x41FFC20, 0x1B0];
-
             while (!token.IsCancellationRequested && _lockedWeather.HasValue)
             {
                 try
