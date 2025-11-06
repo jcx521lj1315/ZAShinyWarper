@@ -11,6 +11,7 @@
     {
         int MaximumTransferSize { get; }
         bool Connected { get; }
+        void Disconnect();
         byte[] ReadBytes(ulong offset, int length, RWMethod method = RWMethod.Heap);
         void WriteBytes(byte[] data, ulong offset, RWMethod method = RWMethod.Heap);
         void SendBytes(byte[] encodeData);

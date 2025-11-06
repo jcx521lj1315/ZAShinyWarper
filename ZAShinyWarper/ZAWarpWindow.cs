@@ -11,7 +11,7 @@ namespace ZAShinyWarper
 {
     public partial class ZAWarpWindow : Form
     {
-        private readonly long[] jumpsPos = [0x41EC340, 0x248, 0x00, 0x138]; // [[[[main+41EC340]+248]+00]+138]+90
+        private readonly long[] jumpsPos = [0x41ED340, 0x248, 0x00, 0x138]; // [[[[main+41ED340]+248]+00]+138]+90
         private static IRAMReadWriter bot = default!;
 
         private List<Vector3> positions = [];
@@ -136,6 +136,7 @@ namespace ZAShinyWarper
 
                 SetUIEnableState(true, false);
                 CleanUpBot();
+                bot.Disconnect();
                 ResetSprites();
                 bot = default!;
             }
@@ -174,6 +175,7 @@ namespace ZAShinyWarper
 
                 SetUIEnableState(false, false);
                 CleanUpBot();
+                bot.Disconnect();
                 ResetSprites();
                 bot = default!;
             }
@@ -279,22 +281,22 @@ namespace ZAShinyWarper
 
         private void OnClickForwards(object sender, EventArgs e)
         {
-            MovePlayer(0, 1);
+            MovePlayer(0, 1, 0);
         }
 
         private void OnClickBackwards(object sender, EventArgs e)
         {
-            MovePlayer(0, -1);
+            MovePlayer(0, -1, 0);
         }
 
         private void OnClickLeft(object sender, EventArgs e)
         {
-            MovePlayer(1, 0);
+            MovePlayer(1, 0, 0);
         }
 
         private void OnClickRight(object sender, EventArgs e)
         {
-            MovePlayer(-1, 0);
+            MovePlayer(-1, 0, 0);
         }
 
         private void OnClickMoveItemUp(object sender, EventArgs e)
@@ -322,12 +324,15 @@ namespace ZAShinyWarper
 
         private void OnClickUp(object sender, EventArgs e)
         {
-            MovePlayerZ();
+            MovePlayer(0, 0, 1);
         }
 
         private void OnClickSave(object sender, EventArgs e)
         {
             var pos = GetPlayerPosition();
+            if (pos.X == 0 || pos.Z == 0)
+                return;
+
             positions.Add(pos);
             SaveAllAndUpdateUI();
 
@@ -338,6 +343,7 @@ namespace ZAShinyWarper
         {
             if (lBCoords.SelectedIndex > -1 && lBCoords.SelectedItem != null)
             {
+                warping = true;
                 SetWarpingEnableState(false); // Disable warping inputs
 
                 var toSend = (Vector3)lBCoords.SelectedItem;
@@ -352,8 +358,22 @@ namespace ZAShinyWarper
 
                 for (int i = 0; i < 15; ++i)
                 {
+                    if (!warping)
+                        return;
+
                     int currentAttempt = i + 1;
-                    if (GetPlayerPosition().Y >= toSend.Y - 0.02f && GetPlayerPosition().Y <= toSend.Y + 0.02f)
+                    var pos = GetPlayerPosition();
+                    if (pos.X == 0 || pos.Z == 0)
+                    {
+                        warpProgress.PerformSafely(() => warpProgress.Hide());
+                        warpProgress.PerformSafely(() => warpProgress.SetText("Warping..."));
+                        warping = false;
+                        SetWarpingEnableState(true);
+                        MessageBox.Show("Warp failed. Please check Switch Connection");
+                        return;
+                    }
+
+                    if (pos.Y >= toSend.Y - 0.02f && pos.Y <= toSend.Y + 0.02f)
                         break;
 
                     if (i == 0)
@@ -374,6 +394,7 @@ namespace ZAShinyWarper
                 warpProgress.PerformSafely(() => warpProgress.Hide());
                 warpProgress.PerformSafely(() => warpProgress.SetText("Warping..."));
 
+                warping = false;
                 SetWarpingEnableState(true); // Enable warping inputs
             }
         }
@@ -500,60 +521,114 @@ namespace ZAShinyWarper
             }
         }
 
-        private void MovePlayer(float x, float y)
+        private void MovePlayer(float x, float y, float z)
         {
-            int stepOffset = (int)nUDDistance.Value;
-            ulong ramOffset = GetPlayerCoordinatesOffset();
+            try
+            {
+                int stepOffset = (int)nUDDistance.Value;
+                ulong ramOffset = GetPlayerCoordinatesOffset();
 
-            var bytes = bot.ReadBytes(ramOffset, 12, RWMethod.Absolute);
-            float xn = BitConverter.ToSingle(bytes, 0);
-            float yn = BitConverter.ToSingle(bytes, 8);
-            xn += (x * stepOffset); yn += (y * stepOffset);
+                var bytes = bot.ReadBytes(ramOffset, 12, RWMethod.Absolute);
+                float xn = BitConverter.ToSingle(bytes, 0);
+                float zn = BitConverter.ToSingle(bytes, 4);
+                float yn = BitConverter.ToSingle(bytes, 8);
+                xn += (x * stepOffset);
+                yn += (y * stepOffset);
+                zn += (z * stepOffset);
 
-            bot.WriteBytes(BitConverter.GetBytes(xn), ramOffset, RWMethod.Absolute);
-            bot.WriteBytes(BitConverter.GetBytes(yn), ramOffset + 8, RWMethod.Absolute);
-        }
-
-        private void MovePlayerZ()
-        {
-            int stepOffset = (int)nUDDistance.Value;
-            ulong ramOffset = GetPlayerCoordinatesOffset();
-
-            var bytes = bot.ReadBytes(ramOffset, 12, RWMethod.Absolute);
-            float zn = BitConverter.ToSingle(bytes, 4);
-            zn += stepOffset;
-
-            bot.WriteBytes(BitConverter.GetBytes(zn), ramOffset + 4, RWMethod.Absolute);
+                bot.WriteBytes(BitConverter.GetBytes(xn), ramOffset, RWMethod.Absolute);
+                bot.WriteBytes(BitConverter.GetBytes(zn), ramOffset + 4, RWMethod.Absolute);
+                bot.WriteBytes(BitConverter.GetBytes(yn), ramOffset + 8, RWMethod.Absolute);
+            }
+            catch
+            {
+                MessageBox.Show("Error moving player. Please check console connection.");
+                return;
+            }
         }
 
         private Vector3 GetPlayerPosition()
         {
-            ulong ramOffset = GetPlayerCoordinatesOffset();
-            var bytes = bot.ReadBytes(ramOffset, 12, RWMethod.Absolute);
+            try
+            {
+                ulong ramOffset = GetPlayerCoordinatesOffset();
+                var bytes = bot.ReadBytes(ramOffset, 12, RWMethod.Absolute);
 
-            float xn = BitConverter.ToSingle(bytes, 0);
-            float yn = BitConverter.ToSingle(bytes, 4);
-            float zn = BitConverter.ToSingle(bytes, 8);
+                float xn = BitConverter.ToSingle(bytes, 0);
+                float yn = BitConverter.ToSingle(bytes, 4);
+                float zn = BitConverter.ToSingle(bytes, 8);
 
-            return new Vector3() { X = xn, Y = yn, Z = zn };
+                return new Vector3() { X = xn, Y = yn, Z = zn };
+            }
+            catch
+            {
+                return new Vector3(); // Return default (0,0,0) on error
+            }
         }
 
         private void SetPlayerPosition(float x, float y, float z)
         {
-            ulong ramOffset = GetPlayerCoordinatesOffset();
+            try
+            {
+                ulong ramOffset = GetPlayerCoordinatesOffset();
 
-            byte[] xb = BitConverter.GetBytes(x);
-            byte[] yb = BitConverter.GetBytes(y);
-            byte[] zb = BitConverter.GetBytes(z);
+                byte[] xb = BitConverter.GetBytes(x);
+                byte[] yb = BitConverter.GetBytes(y);
+                byte[] zb = BitConverter.GetBytes(z);
 
-            var bytes = xb.Concat(yb).Concat(zb);
+                var bytes = xb.Concat(yb).Concat(zb);
 
-            bot.WriteBytes(bytes.ToArray(), ramOffset, RWMethod.Absolute);
+                bot.WriteBytes(bytes.ToArray(), ramOffset, RWMethod.Absolute);
+            }
+            catch
+            {
+                // Silently fail
+            }
         }
 
         private ulong GetPlayerCoordinatesOffset()
         {
             return bot.FollowMainPointer(jumpsPos) + 0x90;
+        }
+
+        private void OnClickRefresh(object sender, EventArgs e)
+        {
+            if (sender == btnRefreshTime)
+            {
+                if (bot != null && bot.Connected)
+                {
+                    try
+                    {
+                        shinyHunter.SetTime(bot, (TimeOfDay)cBForcedTimeOfDay.SelectedItem!, false);
+                    }
+                    catch
+                    {
+                        MessageBox.Show("Error Setting the time. Please check your connection to the Switch");
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Not connected to SysBot.");
+                }
+            }
+            else if (sender == btnRefreshWeather)
+            {
+                if (bot != null && bot.Connected)
+                {
+                    try
+                    {
+                        shinyHunter.SetWeather(bot, (Weather)cBForcedWeather.SelectedItem!, false);
+                    }
+                    catch
+                    {
+                        MessageBox.Show("Error Setting the weather. Please check your connection to the Switch");
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Not connected to SysBot.");
+                }
+            }
         }
 
         private void OnClickReset(object sender, EventArgs e)
@@ -762,6 +837,8 @@ namespace ZAShinyWarper
             cBWhenShinyFound.PerformSafely(() => cBWhenShinyFound.Enabled = enabled);
             cBForcedWeather.PerformSafely(() => cBForcedWeather.Enabled = enabled);
             cBForcedTimeOfDay.PerformSafely(() => cBForcedTimeOfDay.Enabled = enabled);
+            btnRefreshWeather.PerformSafely(() => btnRefreshWeather.Enabled = enabled);
+            btnRefreshTime.PerformSafely(() => btnRefreshTime.Enabled = enabled);
             nUDCheckTime.PerformSafely(() => nUDCheckTime.Enabled = enabled);
             nUDCamMove.PerformSafely(() => nUDCamMove.Enabled = enabled);
             nUDSaveFreq.PerformSafely(() => nUDSaveFreq.Enabled = enabled);
@@ -791,12 +868,16 @@ namespace ZAShinyWarper
 
         private void CleanUpBot()
         {
-            if (bot != null && bot.Connected)
+            try
             {
-                shinyHunter.SetWeather(bot, Weather.None);
-                shinyHunter.SetTime(bot, TimeOfDay.None);
+                shinyHunter.UnlockTime();
+                shinyHunter.UnlockWeather();
                 bot.SendBytes(Encoding.ASCII.GetBytes("setStick RIGHT 0 0\r\n"));
                 bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
+            }
+            catch
+            {
+                // Silently fail
             }
         }
 
@@ -846,157 +927,171 @@ namespace ZAShinyWarper
             SetFiltersEnableState(false);
             btnWarp.PerformSafely(() => btnWarp.Text = "Warping. Click to end.");
 
-            // Set Time and Weather
-            shinyHunter.SetTime(bot, (TimeOfDay)cBForcedTimeOfDay.SelectedItem!);
-            shinyHunter.SetWeather(bot, (Weather)cBForcedWeather.SelectedItem!);
-
-            // Rotate camera for spawns
-            if (camSpeed != 0)
-                bot.SendBytes(Encoding.ASCII.GetBytes($"setStick RIGHT {camSpeed} 0\r\n"));
-
-            // Refresh stashed shinies
-            _ = shinyHunter.LoadStashedShinies(bot);
-            DisplayStashedShinies();
-
-            while (warping)
+            try
             {
-                currentWarps++;
-                if (currentWarps % saveFrequency == 0)
-                    await SaveGame().ConfigureAwait(false);
+                // Set Time and Weather
+                shinyHunter.SetTime(bot, (TimeOfDay)cBForcedTimeOfDay.SelectedItem!);
+                shinyHunter.SetWeather(bot, (Weather)cBForcedWeather.SelectedItem!);
 
-                // Check shinies first as a new one may have spawned before we move
-                var newFound = shinyHunter.LoadStashedShinies(bot);
-                var cacheIsFull = shinyHunter.StashedShinies.Count == 10;
+                // Rotate camera for spawns
+                if (camSpeed != 0)
+                    bot.SendBytes(Encoding.ASCII.GetBytes($"setStick RIGHT {camSpeed} 0\r\n"));
 
-                if (newFound)
+                // Refresh stashed shinies
+                _ = shinyHunter.LoadStashedShinies(bot);
+                DisplayStashedShinies();
+
+                while (warping)
                 {
-                    DisplayStashedShinies();
-                    var newShinies = shinyHunter.DifferentShinies;
-                    foreach (var pk in newShinies)
+                    currentWarps++;
+                    if (currentWarps % saveFrequency == 0)
+                        await SaveGame().ConfigureAwait(false);
+
+                    // Check shinies first as a new one may have spawned before we move
+                    var newFound = shinyHunter.LoadStashedShinies(bot);
+                    var cacheIsFull = shinyHunter.StashedShinies.Count == 10;
+
+                    if (newFound)
                     {
-                        var matchesFilter = filter.MatchesFilter(pk.PKM);
+                        DisplayStashedShinies();
+                        var newShinies = shinyHunter.DifferentShinies;
+                        foreach (var pk in newShinies)
+                        {
+                            var matchesFilter = filter.MatchesFilter(pk.PKM);
 
-                        if (matchesFilter)
-                        {
-                            matchingShinyFound = true;
-                        }
+                            if (matchesFilter)
+                            {
+                                matchingShinyFound = true;
+                            }
 
-                        var shouldStop = false;
-                        var shouldSendEmbed = true;
-                        var stopMessage = string.Empty;
+                            var shouldStop = false;
+                            var shouldSendEmbed = true;
+                            var stopMessage = string.Empty;
 
-                        if (matchesFilter && action == ShinyFoundAction.StopOnFound) // Found what we wanted. Stop warping, go catch it
-                        {
-                            shouldStop = true;
-                            stopMessage = $"A Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}matching the filter has been found after {currentWarps} attempts!\r\nStopping warping.\r\n\r\n{pk}\r\n";
-                        }
-                        else if (matchesFilter && action == ShinyFoundAction.ClearCacheAndContinue) // Found what we wanted, keep going
-                        {
-                            MessageBox.Show($"We Found A Match after {currentWarps} attempts! Let's keep going to find more!\r\n\r\n{pk}\r\n", "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        }
-                        else if (matchesFilter && cacheIsFull && action != ShinyFoundAction.StopOnFound) // Found what we wanted in this run and the cache is full
-                        {
-                            shouldStop = true;
-                            stopMessage = $"A Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}matching the filter has been found after {currentWarps} attempts and your stash is now full!\r\nStopping warping.\r\n\r\n{pk}\r\n";
-                        }
-                        else if (!matchesFilter && action == ShinyFoundAction.ClearCacheAndContinue) // Does not match filter, clear it out
-                        {
-                            shouldSendEmbed = false;
-                            int index = shinyHunter.StashedShinies.IndexOf(pk);
-                            shinyHunter.RemoveShinyFromCache(bot, index); // keep removing until we have a whole cache of matches
-                            shinyHunter.StashedShinies.RemoveAt(index);
-                            StashList[index].PerformSafely(() => StashList[index].Image = null);
-                            DisplayStashedShinies();
-                        }
-                        else if (!matchesFilter && cacheIsFull) // Does not match filter but the cache is full
-                        {
-                            if (action == ShinyFoundAction.StopAtFullCache) // Maybe something worth catching not being filtered for
+                            if (matchesFilter && action == ShinyFoundAction.StopOnFound) // Found what we wanted. Stop warping, go catch it
                             {
                                 shouldStop = true;
-                                stopMessage = matchingShinyFound
-                                    ? "A shiny matching your filter was found earlier in the hunt.\r\nYour shiny cache is now full!\r\nStopping warping to preserve filtered match."
-                                    : "No shiny matching your filter was found.\r\nYour shiny cache is now full!\r\nStopping warping.";
+                                stopMessage = $"A Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}matching the filter has been found after {currentWarps} attempts!\r\nStopping warping.\r\n\r\n{pk}\r\n";
                             }
-                            else if (action == ShinyFoundAction.CacheAndContinue && matchingShinyFound) // Most recent does not match filter but the cache is now full and a filter match was found at an earlier point
+                            else if (matchesFilter && action == ShinyFoundAction.ClearAndContinue) // Found what we wanted, keep going
+                            {
+                                MessageBox.Show($"We Found A Match after {currentWarps} attempts! Let's keep going to find more!\r\n\r\n{pk}\r\n", "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            }
+                            else if (matchesFilter && cacheIsFull && action != ShinyFoundAction.StopOnFound) // Found what we wanted in this run and the cache is full
                             {
                                 shouldStop = true;
-                                stopMessage = "A shiny matching your filter was found earlier in the hunt.\r\nYour shiny cache is now full!\r\nStopping to preserve your matching shiny.";
+                                stopMessage = $"A Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}matching the filter has been found after {currentWarps} attempts and your stash is now full!\r\nStopping warping.\r\n\r\n{pk}\r\n";
                             }
-                            else // Cache is full but no match found. Keep going
+                            else if (!matchesFilter && action == ShinyFoundAction.ClearAndContinue) // Does not match filter, clear it out
+                            {
+                                shouldSendEmbed = false;
+                                int index = shinyHunter.StashedShinies.IndexOf(pk);
+                                shinyHunter.RemoveShinyFromCache(bot, index); // keep removing until we have a whole cache of matches
+                                shinyHunter.StashedShinies.RemoveAt(index);
+                                StashList[index].PerformSafely(() => StashList[index].Image = null);
+                                DisplayStashedShinies();
+                            }
+                            else if (!matchesFilter && cacheIsFull) // Does not match filter but the cache is full
+                            {
+                                if (action == ShinyFoundAction.StopAtFullCache) // Maybe something worth catching not being filtered for
+                                {
+                                    shouldStop = true;
+                                    stopMessage = matchingShinyFound
+                                        ? "A shiny matching your filter was found earlier in the hunt.\r\nYour shiny cache is now full!\r\nStopping warping to preserve filtered match."
+                                        : "No shiny matching your filter was found.\r\nYour shiny cache is now full!\r\nStopping warping.";
+                                }
+                                else if (action == ShinyFoundAction.CacheAndContinue && matchingShinyFound) // Most recent does not match filter but the cache is now full and a filter match was found at an earlier point
+                                {
+                                    shouldStop = true;
+                                    stopMessage = "A shiny matching your filter was found earlier in the hunt.\r\nYour shiny cache is now full!\r\nStopping to preserve your matching shiny.";
+                                }
+                                else // Cache is full but no match found. Keep going
+                                {
+                                    ShowUnwantedShinyMessage(pk);
+                                }
+                            }
+                            else if (!matchesFilter) // No match, still room in cache
                             {
                                 ShowUnwantedShinyMessage(pk);
                             }
-                        }
-                        else if (!matchesFilter) // No match, still room in cache
-                        {
-                            ShowUnwantedShinyMessage(pk);
+
+                            if (shouldStop)
+                            {
+                                StopWarping(stopMessage);
+                            }
+
+                            if (shouldSendEmbed)
+                                await SendWebhook(pk.ToShowdownString(), pk.PKM);
                         }
 
-                        if (shouldStop)
+                        // Helper methods
+                        void StopWarping(string message)
                         {
-                            StopWarping(stopMessage);
+                            warping = false;
+                            CleanUpBot();
+                            bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
+                            btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
+                            SetFiltersEnableState(true);
+                            MessageBox.Show(message, cacheIsFull ? "Cache Full!" : "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
 
-                        if (shouldSendEmbed)
-                            await SendWebhook(pk.ToShowdownString(), pk.PKM);
+                        void ShowUnwantedShinyMessage(StashedShiny<PA9> pk)
+                        {
+                            CrossThreadExtensions.DoThreaded(() =>
+                            {
+                                MessageBox.Show($"The following Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}has been found, but does not match your filter.\r\nYou may wish to remove it such that it doesn't occupy one of your shiny stash slots.\r\n\r\n{pk}\r\n",
+                                    "Found something we don't want!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            });
+                        }
                     }
 
-                    // Helper methods
-                    void StopWarping(string message)
+                    foreach (var pos in positions)
                     {
-                        warping = false;
-                        CleanUpBot();
-                        bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
-                        btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
-                        SetFiltersEnableState(true);
-                        MessageBox.Show(message, cacheIsFull ? "Cache Full!" : "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    }
-
-                    void ShowUnwantedShinyMessage(StashedShiny<PA9> pk)
-                    {
-                        CrossThreadExtensions.DoThreaded(() =>
+                        if (!warping)
+                            return;
+                        SetPlayerPosition(pos.X, pos.Y, pos.Z);
+                        await Task.Delay(1_000).ConfigureAwait(false); // fall out and load species
+                                                                       // handle falling out
+                        int tries = 25;
+                        for (; tries > 0; --tries)
                         {
-                            MessageBox.Show($"The following Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}has been found, but does not match your filter.\r\nYou may wish to remove it such that it doesn't occupy one of your shiny stash slots.\r\n\r\n{pk}\r\n",
-                                "Found something we don't want!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        });
-                    }
-                }
+                            if (!warping)
+                                break;
 
-                foreach (var pos in positions)
-                {
-                    if (!warping)
-                        break;
-                    SetPlayerPosition(pos.X, pos.Y, pos.Z);
-                    await Task.Delay(1_000).ConfigureAwait(false); // fall out and load species
-                    // handle falling out
-                    int tries = 25;
-                    for (; tries > 0; --tries)
-                    {
-                        // check for less than 0.02 difference to avoid float precision issues. We only care about Y here as X/Z may vary due to terrain
-                        if (GetPlayerPosition().Y >= pos.Y - 0.02f && GetPlayerPosition().Y <= pos.Y + 0.02f)
+                            // check for less than 0.02 difference to avoid float precision issues. We only care about Y here as X/Z may vary due to terrain
+                            if (GetPlayerPosition().Y >= pos.Y - 0.02f && GetPlayerPosition().Y <= pos.Y + 0.02f)
+                                break;
+                            SetPlayerPosition(pos.X, pos.Y + (tries > 20 ? 1 : 0), pos.Z);
+                            await Task.Delay(1_200).ConfigureAwait(false);
+                        }
+
+                        if (tries == 0) // failed to load
+                        {
+                            warping = false;
+                            CleanUpBot();
+                            btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
+                            SetFiltersEnableState(true);
+                            MessageBox.Show($"Warping has failed, please check the console!");
                             break;
-                        SetPlayerPosition(pos.X, pos.Y + (tries > 20 ? 1 : 0), pos.Z);
-                        await Task.Delay(1_200).ConfigureAwait(false);
+                        }
+
+                        if (pos.Flags.Contains("instant"))
+                            continue;
+
+                        if (pos.Flags.Contains("halfwait"))
+                            await Task.Delay(warpInterval / 2).ConfigureAwait(false);
+                        else
+                            await Task.Delay(warpInterval).ConfigureAwait(false);
                     }
-
-                    if (tries == 0) // failed to load
-                    {
-                        warping = false;
-                        CleanUpBot();
-                        btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
-                        SetFiltersEnableState(true);
-                        MessageBox.Show($"Warping has failed, please check the console!");
-                        break;
-                    }
-
-                    if (pos.Flags.Contains("instant"))
-                        continue;
-
-                    if (pos.Flags.Contains("halfwait"))
-                        await Task.Delay(warpInterval / 2).ConfigureAwait(false);
-                    else
-                        await Task.Delay(warpInterval).ConfigureAwait(false);
                 }
+            }
+            catch
+            {
+                warping = false;
+                CleanUpBot();
+                btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
+                SetFiltersEnableState(true);
+                MessageBox.Show($"An error occurred during warping");
             }
         }
 
