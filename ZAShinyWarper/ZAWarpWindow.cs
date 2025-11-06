@@ -902,8 +902,6 @@ namespace ZAShinyWarper
                 warping = false;
                 SetFiltersEnableState(true);
                 btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
-                shinyHunter.UnlockWeather();
-                shinyHunter.UnlockTime();
                 CleanUpBot();
                 return;
             }
