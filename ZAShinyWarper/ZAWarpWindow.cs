@@ -1084,7 +1084,6 @@ namespace ZAShinyWarper
             }
         }
 
-
         private void OnSpeciesSelectedIndexChange(object sender, EventArgs e)
         {
             // Select "Any" if none are selected

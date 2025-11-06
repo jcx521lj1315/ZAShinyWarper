@@ -263,8 +263,8 @@ namespace ZAShinyWarper.Hunting
                 var invalidStartAddress = bot.FollowMainPointer(invalidStartPointer);
                 var newInvalidStartAddress = invalidStartAddress - STRUCT_SIZE;
 
-                // Write the new invalid start address back to [[main+4200D20]+358]
-                var metadataBase = bot.FollowMainPointer([0x4200D20]);
+                // Write the new invalid start address back to [[main+4201D20]+358]
+                var metadataBase = bot.FollowMainPointer([0x4201D20]);
                 bot.WriteBytes(BitConverter.GetBytes(newInvalidStartAddress), metadataBase + 0x358, RWMethod.Absolute);
             }
             catch (Exception ex)
@@ -285,7 +285,7 @@ namespace ZAShinyWarper.Hunting
                 var structArrayStart = bot.FollowMainPointer(arrayStartPointer);
 
                 // Set the invalid start address equal to the array start (making count = 0)
-                var metadataBase = bot.FollowMainPointer([0x4200D20]);
+                var metadataBase = bot.FollowMainPointer([0x4201D20]);
                 bot.WriteBytes(BitConverter.GetBytes(structArrayStart), metadataBase + 0x358, RWMethod.Absolute);
 
                 // Clear local cache
