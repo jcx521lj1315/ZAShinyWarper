@@ -984,7 +984,7 @@ namespace ZAShinyWarper
                         {
                             shouldSendEmbed = false;
                             int index = shinyHunter.StashedShinies.IndexOf(pk);
-                            shinyHunter.RemoveShinyFromCache(bot, index); // keep removing until we have a whole cache of matches
+                            shinyHunter.ClearSingleFromCache(bot, index); // keep removing until we have a whole cache of matches
                             shinyHunter.StashedShinies.RemoveAt(index);
                             StashList[index].PerformSafely(() => StashList[index].Image = null);
                             DisplayStashedShinies();
@@ -1211,7 +1211,7 @@ namespace ZAShinyWarper
                     try
                     {
                         // Call the despawn method
-                        shinyHunter.RemoveShinyFromCache(bot, index);
+                        shinyHunter.ClearSingleFromCache(bot, index);
 
                         // Reload the stashed shinies
                         shinyHunter.LoadStashedShinies(bot);
@@ -1261,7 +1261,7 @@ namespace ZAShinyWarper
                     try
                     {
                         // Call the despawn method
-                        shinyHunter.ClearAllFromStash(bot);
+                        shinyHunter.ClearAllFromCache(bot);
 
                         // Reload the stashed shinies
                         shinyHunter.LoadStashedShinies(bot);

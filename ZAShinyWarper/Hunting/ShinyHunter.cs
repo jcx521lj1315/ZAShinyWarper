@@ -55,14 +55,16 @@ namespace ZAShinyWarper.Hunting
         //
         // Pointers courtesy of Kunogi who's awesome for finding them!
         //
-        // Array start: [[main+4201D20]+350]
-        private readonly long[] arrayStartPointer = [0x4201D20, 0x350];
-        // Invalid start: [[main+4201D20]+358]
-        private readonly long[] invalidStartPointer = [0x4201D20, 0x358];
-        // Weather pointer: [[main+4200C20]+1B0]+0
-        public readonly long[] weatherPointer = [0x4200C20, 0x1B0];
-        // Time pointer: [[main+4200C40]+D8]+30
-        private readonly long[] timePointer = [0x4200C40, 0xD8];
+        // Base pointer
+        private readonly long[] basePointer = [0x4201D20];
+        // Array start
+        private readonly long[] arrayStartPointer = [0x4201D20, 0x350]; // [[main+4201D20]+350]
+        // Invalid start
+        private readonly long[] invalidStartPointer = [0x4201D20, 0x358]; // [[main+4201D20]+358]
+        // Weather pointer
+        public readonly long[] weatherPointer = [0x4200C20, 0x1B0]; // [[main+4200C20]+1B0]+0
+        // Time pointer
+        private readonly long[] timePointer = [0x4200C40, 0xD8]; // [[main+4200C40]+D8]+30
 
         public IList<StashedShiny<T>> PreviousStashedShinies { get; private set; } = [];
         public IList<StashedShiny<T>> StashedShinies { get; private set; } = [];
@@ -232,7 +234,7 @@ namespace ZAShinyWarper.Hunting
         /// </summary>
         /// <param name="bot"></param>
         /// <param name="index">Index of the shiny to despawn (0-based)</param>
-        public void RemoveShinyFromCache(IRAMReadWriter bot, int index)
+        public void ClearSingleFromCache(IRAMReadWriter bot, int index)
         {
             try
             {
@@ -264,7 +266,7 @@ namespace ZAShinyWarper.Hunting
                 var newInvalidStartAddress = invalidStartAddress - STRUCT_SIZE;
 
                 // Write the new invalid start address back to [[main+4201D20]+358]
-                var metadataBase = bot.FollowMainPointer([0x4201D20]);
+                var metadataBase = bot.FollowMainPointer(basePointer);
                 bot.WriteBytes(BitConverter.GetBytes(newInvalidStartAddress), metadataBase + 0x358, RWMethod.Absolute);
             }
             catch (Exception ex)
@@ -277,7 +279,7 @@ namespace ZAShinyWarper.Hunting
         /// Clears all shinies from the cache by resetting the invalid start pointer to match the array start.
         /// This is much faster than iterating through each slot.
         /// </summary>
-        public void ClearAllFromStash(IRAMReadWriter bot)
+        public void ClearAllFromCache(IRAMReadWriter bot)
         {
             try
             {
@@ -285,7 +287,7 @@ namespace ZAShinyWarper.Hunting
                 var structArrayStart = bot.FollowMainPointer(arrayStartPointer);
 
                 // Set the invalid start address equal to the array start (making count = 0)
-                var metadataBase = bot.FollowMainPointer([0x4201D20]);
+                var metadataBase = bot.FollowMainPointer(basePointer);
                 bot.WriteBytes(BitConverter.GetBytes(structArrayStart), metadataBase + 0x358, RWMethod.Absolute);
 
                 // Clear local cache
