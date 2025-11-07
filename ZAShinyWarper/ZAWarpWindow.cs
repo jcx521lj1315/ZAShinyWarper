@@ -1,25 +1,31 @@
-﻿using System.Diagnostics;
+﻿using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using PKHeX.Core;
 using PKHeX.Drawing.PokeSprite;
+using SysBot.Base;
 using ZAShinyWarper.helpers;
 using ZAShinyWarper.Hunting;
-using ZAShinyWarper.Injection;
 
 namespace ZAShinyWarper
 {
     public partial class ZAWarpWindow : Form
     {
-        private readonly long[] jumpsPos = [0x41ED340, 0x248, 0x00, 0x138]; // [[[[main+41ED340]+248]+00]+138]+90
-        private static IRAMReadWriter bot = default!;
-
         private List<Vector3> positions = [];
         private const string Config = "config.json";
         private static readonly JsonSerializerOptions jsonOptions = new() { WriteIndented = true };
 
+        private readonly CancellationTokenSource _globalCts = new();
+        private CancellationToken GlobalToken => _globalCts.Token;
+        private CancellationTokenSource? _monitoringCts = null;
+
+        private ConnectionWrapper ConnectionWrapper = default!;
+        private static readonly Lock ConnectionLock = new();
+        private readonly SwitchConnectionConfig ConnectionConfig;
         private ProgramConfig programConfig = new();
+        public ComboBox[] CBIVs = default!;
 
         private readonly ShinyHunter<PA9> shinyHunter = new();
         private readonly List<PictureBox> StashList;
@@ -27,11 +33,8 @@ namespace ZAShinyWarper
         private readonly WarpProgressForm warpProgress = new();
         private ContextMenuStrip? shinyContextMenu;
 
-        public ComboBox[] CBIVs = default!;
         private readonly List<string> filterSpecies = [];
         private readonly Dictionary<string, bool> speciesCheckStates = [];
-
-        private CancellationTokenSource? _monitoringCts = null;
 
         // Bot
         private bool matchingShinyFound = false;
@@ -44,9 +47,54 @@ namespace ZAShinyWarper
             InitializeComponent();
             SetupListBox();
             CultureInfo.CurrentCulture = new CultureInfo("en-US", false);
-            Application.ApplicationExit += (s, e) => CleanUpBot();
+
+            FormClosing += OnFormClosing;
+
             SpriteName.AllowShinySprite = true;
             StashList = [StashedShiny1, StashedShiny2, StashedShiny3, StashedShiny4, StashedShiny5, StashedShiny6, StashedShiny7, StashedShiny8, StashedShiny9, StashedShiny10];
+
+            LoadConfig();
+            ConnectionConfig = new()
+            {
+                IP = programConfig.IPAddress,
+                Port = programConfig.Protocol is SwitchProtocol.WiFi ? 6000 : programConfig.UsbPort,
+                Protocol = programConfig.Protocol,
+            };
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Cancel all operations
+                _globalCts?.Cancel();
+                _monitoringCts?.Cancel();
+
+                // Dispose managed resources
+                httpClient?.Dispose();
+                warpProgress?.Dispose();
+                shinyContextMenu?.Dispose();
+                _monitoringCts?.Dispose();
+                _globalCts?.Dispose();
+                shinyHunter?.Dispose();
+
+                // Designer-managed components
+                components?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        private async void OnFormClosing(object? sender, FormClosingEventArgs e)
+        {
+            // Cancel ongoing operations
+            _globalCts?.Cancel();
+            _monitoringCts?.Cancel();
+
+            // Save Configurations
+            SaveConfig();
+
+            // Clean up bot connection
+            await CleanUpBotAsync();
         }
 
         private void LoadDefaults(object sender, EventArgs e)
@@ -55,17 +103,14 @@ namespace ZAShinyWarper
             // WhenShinyFound
             foreach (var item in Enum.GetValues<ShinyFoundAction>())
                 cBWhenShinyFound.Items.Add(item);
-            cBWhenShinyFound.SelectedIndex = 0;
 
             // Forced Weather
             foreach (var item in Enum.GetValues<Weather>())
                 cBForcedWeather.Items.Add(item);
-            cBForcedWeather.SelectedIndex = 8;
 
             // Forced Time of Day
             foreach (var item in Enum.GetValues<TimeOfDay>())
                 cBForcedTimeOfDay.Items.Add(item);
-            cBForcedTimeOfDay.SelectedIndex = 4;
 
             // Species
             cBSpecies.Items.Add("Any");
@@ -96,11 +141,31 @@ namespace ZAShinyWarper
             {
                 foreach (var item in Enum.GetValues<IVType>())
                     cb.Items.Add(item);
-                cb.SelectedIndex = 0;
             }
 
-            LoadConfig();
-            LoadAllAndUpdateUI();
+            // Try to load existing config
+            bool configExists = File.Exists(Config) || File.Exists("positions.txt") || File.Exists("filter_config.txt");
+
+            if (configExists)
+            {
+                LoadConfig();
+                UpdateUI();
+            }
+            else
+            {
+                // Set defaults for new users
+                cBWhenShinyFound.SelectedIndex = 0;
+                cBForcedWeather.SelectedIndex = 8;
+                cBForcedTimeOfDay.SelectedIndex = 4;
+                cBSpecies.SetItemChecked(0, true);
+
+                foreach (var cb in CBIVs)
+                    cb.SelectedIndex = 0;
+
+                nUDDistance.Value = 3;
+
+                UpdateUI();
+            }
         }
 
         private ShinyFilter<PA9> GetFilter()
@@ -139,178 +204,234 @@ namespace ZAShinyWarper
 
         private void OnClickConnect(object sender, EventArgs e)
         {
-            if (bot != null && bot.Connected)
+            lock (ConnectionLock)
             {
-                if (warping)
+                if (ConnectionWrapper != null && ConnectionWrapper.Connected)
                 {
-                    warping = false;
-                    SetFiltersEnableState(true);
-                    btnWarp.Text = "Start Warping";
-                }
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            if (warping)
+                            {
+                                warping = false;
+                                SetFiltersEnableState(true);
+                                Invoke(() => btnWarp.Text = "Start Warping");
+                            }
 
-                SetUIEnableState(true, false);
-                CleanUpBot();
-                bot.Disconnect();
-                ResetSprites();
-                bot = default!;
-            }
-            else
-            {
-                try
-                {
-                    var botsys = new SysBot();
-                    botsys.Connect(tB_IP.Text, 6000);
-                    bot = botsys;
-
-                    SetUIEnableState(true, true);
-                    shinyHunter.LoadStashedShinies(bot);
-                    DisplayStashedShinies();
-                    DisplayStashedMessageBox(true);
-                    bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
-                    CleanUpBot();
+                            SetUIEnableState(true, false);
+                            await CleanUpBotAsync();
+                            await ConnectionWrapper.Disconnect(GlobalToken).ConfigureAwait(false);
+                            ResetSprites();
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // Expected during shutdown
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error during disconnect: {ex.Message}");
+                        }
+                    }, GlobalToken);
                 }
-                catch (Exception ex)
+                else
                 {
-                    MessageBox.Show(ex.Message);
+                    try
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                Invoke(() => ConnectionConfig.IP = tB_IP.Text);
+                                ConnectionWrapper = new(ConnectionConfig);
+
+                                ConnectionWrapper.ConnectionError += (sender, error) =>
+                                {
+                                    BeginInvoke(() => MessageBox.Show(error, "Connection Error",
+                                        MessageBoxButtons.OK, MessageBoxIcon.Error));
+                                };
+
+                                await ConnectionWrapper.Connect(GlobalToken);
+                                shinyHunter.Initialize(ConnectionWrapper);
+                                await shinyHunter.LoadStashedShinies(GlobalToken);
+                                DisplayStashedShinies();
+                                DisplayStashedMessageBox(true);
+                                SetUIEnableState(true, true);
+                                await CleanUpBotAsync();
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                // Expected during shutdown
+                            }
+                            catch (Exception ex)
+                            {
+                                BeginInvoke(() => MessageBox.Show(ex.Message));
+                            }
+                        }, GlobalToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        BeginInvoke(() => MessageBox.Show(ex.Message));
+                    }
                 }
             }
         }
 
         private void OnClickConnectUSB(object sender, EventArgs e)
         {
-            if (bot != null && bot.Connected)
+            lock (ConnectionLock)
             {
-                if (warping)
+                if (ConnectionWrapper != null && ConnectionWrapper.Connected)
                 {
-                    warping = false;
-                    SetFiltersEnableState(true);
-                    btnWarp.Text = "Start Warping";
-                }
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            if (warping)
+                            {
+                                warping = false;
+                                SetFiltersEnableState(true);
+                                Invoke(() => btnWarp.Text = "Start Warping");
+                            }
 
-                SetUIEnableState(false, false);
-                CleanUpBot();
-                bot.Disconnect();
-                ResetSprites();
-                bot = default!;
-            }
-            else
-            {
-                try
-                {
-                    var botusb = new USBBot();
-                    botusb.Connect();
-                    bot = botusb;
-
-                    SetUIEnableState(false, true);
-                    shinyHunter.LoadStashedShinies(bot);
-                    DisplayStashedShinies();
-                    DisplayStashedMessageBox(true);
-                    bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
-                    CleanUpBot();
+                            SetUIEnableState(false, false);
+                            await CleanUpBotAsync();
+                            await ConnectionWrapper.Disconnect(GlobalToken).ConfigureAwait(false);
+                            ResetSprites();
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // Expected during shutdown
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error during USB disconnect: {ex.Message}");
+                        }
+                    }, GlobalToken);
                 }
-                catch (Exception ex)
+                else
                 {
-                    MessageBox.Show(ex.Message);
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            ConnectionConfig.Port = programConfig.UsbPort;
+                            ConnectionConfig.Protocol = SwitchProtocol.USB;
+                            ConnectionWrapper = new(ConnectionConfig);
+
+                            ConnectionWrapper.ConnectionError += (sender, error) =>
+                            {
+                                BeginInvoke(() => MessageBox.Show(error, "Connection Error",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Error));
+                            };
+
+                            await ConnectionWrapper.Connect(GlobalToken);
+                            await shinyHunter.LoadStashedShinies(GlobalToken);
+                            DisplayStashedShinies();
+                            DisplayStashedMessageBox(false);
+                            SetUIEnableState(false, true);
+                            await CleanUpBotAsync();
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // Expected during shutdown
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(ex.Message);
+                        }
+                    }, GlobalToken);
                 }
             }
         }
 
         private void DisplayStashedMessageBox(bool wifi)
         {
-            var form = new Form
+            Invoke(() =>
             {
-                Text = "Connected",
-                Width = 250,
-                Height = 175,
-                StartPosition = FormStartPosition.CenterParent,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                MaximizeBox = false,
-                MinimizeBox = false,
-                ControlBox = false
-            };
-
-            var headerLabel = new Label
-            {
-                Text = $"SysBot Connected\r\n({(wifi ? "Network" : "USB")})",
-                Font = new Font("Segoe UI", 12),
-                TextAlign = ContentAlignment.MiddleCenter,
-                Dock = DockStyle.Top,
-                Height = 65,
-                Padding = new Padding(10)
-            };
-            var count = shinyHunter.StashedShinies.Count;
-            var countLabel = new Label
-            {
-                Text = $"{(count == 0 ? "No Shinies found in your stash." : $"{count} Shin{(count == 1 ? "y" : "ies")} found in your stash!")}",
-                Font = new Font("Segoe UI", 10),
-                TextAlign = ContentAlignment.MiddleCenter,
-                Dock = DockStyle.Fill
-            };
-
-            var okButton = new Button
-            {
-                Text = "OK",
-                Width = 80,
-                Height = 30,
-                Dock = DockStyle.Bottom,
-                Margin = new Padding(10)
-            };
-            okButton.Click += (s, e) => form.Close();
-
-            form.Controls.Add(countLabel);
-            form.Controls.Add(headerLabel);
-            form.Controls.Add(okButton);
-            form.ShowDialog();
-        }
-
-        private void OnClickScreenOn(object sender, EventArgs e)
-        {
-            if (bot != null && bot.Connected)
-            {
-                try
+                var form = new Form
                 {
-                    bot.SendBytes(Encoding.ASCII.GetBytes("screenOn\r\n"));
-                }
-                catch (Exception ex)
+                    Text = "Connected",
+                    Width = 250,
+                    Height = 175,
+                    StartPosition = FormStartPosition.CenterParent,
+                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    MaximizeBox = false,
+                    MinimizeBox = false,
+                    ControlBox = false
+                };
+
+                var headerLabel = new Label
                 {
-                    MessageBox.Show(ex.Message);
-                }
-            }
-        }
-
-        private void OnClickScreenOff(object sender, EventArgs e)
-        {
-            if (bot != null && bot.Connected)
-            {
-                try
+                    Text = $"SysBot Connected\r\n({(wifi ? "Network" : "USB")})",
+                    Font = new Font("Segoe UI", 12),
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Dock = DockStyle.Top,
+                    Height = 65,
+                    Padding = new Padding(10)
+                };
+                var count = shinyHunter.StashedShinies.Count;
+                var countLabel = new Label
                 {
-                    bot.SendBytes(Encoding.ASCII.GetBytes("screenOff\r\n"));
-                }
-                catch (Exception ex)
+                    Text = $"{(count == 0 ? "No Shinies found in your stash." : $"{count} Shin{(count == 1 ? "y" : "ies")} found in your stash!")}",
+                    Font = new Font("Segoe UI", 10),
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Dock = DockStyle.Fill
+                };
+
+                var okButton = new Button
                 {
-                    MessageBox.Show(ex.Message);
-                }
-            }
+                    Text = "OK",
+                    Width = 80,
+                    Height = 30,
+                    Dock = DockStyle.Bottom,
+                    Margin = new Padding(10)
+                };
+                okButton.Click += (s, e) => form.Close();
+
+                form.Controls.Add(countLabel);
+                form.Controls.Add(headerLabel);
+                form.Controls.Add(okButton);
+                form.ShowDialog();
+            });
         }
 
-        private void OnClickForwards(object sender, EventArgs e)
+        private async void OnClickScreenOn(object sender, EventArgs e)
         {
-            MovePlayer(0, 1, 0);
+            await ConnectionWrapper.ToggleScreen(true, GlobalToken).ConfigureAwait(false);
         }
 
-        private void OnClickBackwards(object sender, EventArgs e)
+        private async void OnClickScreenOff(object sender, EventArgs e)
         {
-            MovePlayer(0, -1, 0);
+            await ConnectionWrapper.ToggleScreen(false, GlobalToken).ConfigureAwait(false);
         }
 
-        private void OnClickLeft(object sender, EventArgs e)
+        private async void OnClickForwards(object sender, EventArgs e)
         {
-            MovePlayer(1, 0, 0);
+            int distance = 0;
+            Invoke(() => distance = (int)nUDDistance.Value);
+            await ConnectionWrapper.MovePlayer(0, 1, 0, distance, GlobalToken);
         }
 
-        private void OnClickRight(object sender, EventArgs e)
+        private async void OnClickBackwards(object sender, EventArgs e)
         {
-            MovePlayer(-1, 0, 0);
+            int distance = 0;
+            Invoke(() => distance = (int)nUDDistance.Value);
+            await ConnectionWrapper.MovePlayer(0, -1, 0, distance, GlobalToken);
+        }
+
+        private async void OnClickLeft(object sender, EventArgs e)
+        {
+            int distance = 0;
+            Invoke(() => distance = (int)nUDDistance.Value);
+            await ConnectionWrapper.MovePlayer(1, 0, 0, distance, GlobalToken);
+        }
+
+        private async void OnClickRight(object sender, EventArgs e)
+        {
+            int distance = 0;
+            Invoke(() => distance = (int)nUDDistance.Value);
+            await ConnectionWrapper.MovePlayer(-1, 0, 0, distance, GlobalToken);
         }
 
         private void OnClickMoveItemUp(object sender, EventArgs e)
@@ -336,81 +457,99 @@ namespace ZAShinyWarper
             }
         }
 
-        private void OnClickUp(object sender, EventArgs e)
+        private async void OnClickUp(object sender, EventArgs e)
         {
-            MovePlayer(0, 0, 1);
+            int distance = 0;
+            Invoke(() => distance = (int)nUDDistance.Value);
+            await ConnectionWrapper.MovePlayer(0, 0, 1, distance, GlobalToken);
         }
 
-        private void OnClickSave(object sender, EventArgs e)
+        private async void OnClickSave(object sender, EventArgs e)
         {
-            var pos = GetPlayerPosition();
+            var pos = await ConnectionWrapper.GetPlayerPositionAsync(GlobalToken).ConfigureAwait(false);
             if (pos.X == 0 || pos.Z == 0)
                 return;
 
             positions.Add(pos);
             SaveAllAndUpdateUI();
 
-            lBCoords.SelectedIndex = lBCoords.Items.Count - 1;
+            Invoke(() => lBCoords.SelectedIndex = lBCoords.Items.Count - 1);
         }
 
         private async void OnClickRestore(object sender, EventArgs e)
         {
-            if (lBCoords.SelectedIndex > -1 && lBCoords.SelectedItem != null)
+            Vector3? toSend = null;
+            int selectedIndex = -1;
+
+            Invoke(() =>
             {
-                warping = true;
-                SetWarpingEnableState(false); // Disable warping inputs
+                selectedIndex = lBCoords.SelectedIndex;
+                if (selectedIndex > -1 && lBCoords.SelectedItem != null)
+                    toSend = (Vector3)lBCoords.SelectedItem;
+            });
 
-                var toSend = (Vector3)lBCoords.SelectedItem;
-                SetPlayerPosition(toSend.X, toSend.Y, toSend.Z);
+            if (!toSend.HasValue)
+                return;
 
-                warpProgress.PerformSafely(() =>
+            warping = true;
+            SetWarpingEnableState(false);
+
+            await ConnectionWrapper.SetPlayerPosition(toSend.Value.X, toSend.Value.Y, toSend.Value.Z, GlobalToken);
+
+            Invoke(() =>
+            {
+                CenterFormOnParent(warpProgress);
+                warpProgress.Show();
+            });
+            await Task.Delay(250);
+
+            for (int i = 0; i < 15; ++i)
+            {
+                if (!warping)
+                    return;
+
+                int currentAttempt = i + 1;
+                var pos = await ConnectionWrapper.GetPlayerPositionAsync(GlobalToken).ConfigureAwait(false);
+                if (pos.X == 0 || pos.Z == 0)
                 {
-                    CenterFormOnParent(warpProgress);
-                    warpProgress.Show();
-                });
-                await Task.Delay(250); // Let the form render correctly
-
-                for (int i = 0; i < 15; ++i)
-                {
-                    if (!warping)
-                        return;
-
-                    int currentAttempt = i + 1;
-                    var pos = GetPlayerPosition();
-                    if (pos.X == 0 || pos.Z == 0)
+                    Invoke(() =>
                     {
-                        warpProgress.PerformSafely(() => warpProgress.Hide());
-                        warpProgress.PerformSafely(() => warpProgress.SetText("Warping..."));
-                        warping = false;
-                        SetWarpingEnableState(true);
-                        MessageBox.Show("Warp failed. Please check Switch Connection");
-                        return;
-                    }
-
-                    if (pos.Y >= toSend.Y - 0.02f && pos.Y <= toSend.Y + 0.02f)
-                        break;
-
-                    if (i == 0)
-                        await Task.Delay(4000); // we might be falling, wait longer first attempt
-                    else
-                        warpProgress.PerformSafely(() => warpProgress.SetText($"Reattempting to Warp ({currentAttempt}/15) Please wait."));
-
-                    SetPlayerPosition(toSend.X, toSend.Y, toSend.Z);
-                    await Task.Delay(1100).ConfigureAwait(false);
-
-                    if (i == 14 && GetPlayerPosition().Y != toSend.Y)
-                    {
-                        warpProgress.PerformSafely(() => warpProgress.SetText("Warp failure. Please retry"));
-                        await Task.Delay(1000).ConfigureAwait(false);
-                    }
+                        warpProgress.Hide();
+                        warpProgress.SetText("Warping...");
+                    });
+                    warping = false;
+                    SetWarpingEnableState(true);
+                    Invoke(() => MessageBox.Show("Warp failed. Please check Switch Connection"));
+                    return;
                 }
 
-                warpProgress.PerformSafely(() => warpProgress.Hide());
-                warpProgress.PerformSafely(() => warpProgress.SetText("Warping..."));
+                if (pos.Y >= toSend.Value.Y - 0.02f && pos.Y <= toSend.Value.Y + 0.02f)
+                    break;
 
-                warping = false;
-                SetWarpingEnableState(true); // Enable warping inputs
+                if (i == 0)
+                    await Task.Delay(4000);
+                else
+                    Invoke(() => warpProgress.SetText($"Reattempting to Warp ({currentAttempt}/15) Please wait."));
+
+                await ConnectionWrapper.SetPlayerPosition(toSend.Value.X, toSend.Value.Y, toSend.Value.Z, GlobalToken);
+                await Task.Delay(1100).ConfigureAwait(false);
+
+                var position = await ConnectionWrapper.GetPlayerPositionAsync(GlobalToken).ConfigureAwait(false);
+                if (i == 14 && position.Y != toSend.Value.Y)
+                {
+                    Invoke(() => warpProgress.SetText("Warp failure. Please retry"));
+                    await Task.Delay(1000).ConfigureAwait(false);
+                }
             }
+
+            Invoke(() =>
+            {
+                warpProgress.Hide();
+                warpProgress.SetText("Warping...");
+            });
+
+            warping = false;
+            SetWarpingEnableState(true);
         }
 
         private void OnClickExport(object sender, EventArgs e)
@@ -514,10 +653,13 @@ namespace ZAShinyWarper
 
         private void CenterFormOnParent(Form childForm)
         {
-            childForm.StartPosition = FormStartPosition.Manual;
-            int x = Location.X + (Width - childForm.Width) / 2;
-            int y = Location.Y + (Height - childForm.Height) / 2;
-            childForm.Location = new Point(x, y);
+            Invoke(() =>
+            {
+                childForm.StartPosition = FormStartPosition.Manual;
+                int x = Location.X + (Width - childForm.Width) / 2;
+                int y = Location.Y + (Height - childForm.Height) / 2;
+                childForm.Location = new Point(x, y);
+            });
         }
 
         private void OnClickDelete(object sender, EventArgs e)
@@ -535,112 +677,46 @@ namespace ZAShinyWarper
             }
         }
 
-        private void MovePlayer(float x, float y, float z)
-        {
-            try
-            {
-                int stepOffset = (int)nUDDistance.Value;
-                ulong ramOffset = GetPlayerCoordinatesOffset();
-
-                var bytes = bot.ReadBytes(ramOffset, 12, RWMethod.Absolute);
-                float xn = BitConverter.ToSingle(bytes, 0);
-                float zn = BitConverter.ToSingle(bytes, 4);
-                float yn = BitConverter.ToSingle(bytes, 8);
-                xn += (x * stepOffset);
-                yn += (y * stepOffset);
-                zn += (z * stepOffset);
-
-                bot.WriteBytes(BitConverter.GetBytes(xn), ramOffset, RWMethod.Absolute);
-                bot.WriteBytes(BitConverter.GetBytes(zn), ramOffset + 4, RWMethod.Absolute);
-                bot.WriteBytes(BitConverter.GetBytes(yn), ramOffset + 8, RWMethod.Absolute);
-            }
-            catch
-            {
-                MessageBox.Show("Error moving player. Please check console connection.");
-                return;
-            }
-        }
-
-        private Vector3 GetPlayerPosition()
-        {
-            try
-            {
-                ulong ramOffset = GetPlayerCoordinatesOffset();
-                var bytes = bot.ReadBytes(ramOffset, 12, RWMethod.Absolute);
-
-                float xn = BitConverter.ToSingle(bytes, 0);
-                float yn = BitConverter.ToSingle(bytes, 4);
-                float zn = BitConverter.ToSingle(bytes, 8);
-
-                return new Vector3() { X = xn, Y = yn, Z = zn };
-            }
-            catch
-            {
-                return new Vector3(); // Return default (0,0,0) on error
-            }
-        }
-
-        private void SetPlayerPosition(float x, float y, float z)
-        {
-            try
-            {
-                ulong ramOffset = GetPlayerCoordinatesOffset();
-
-                byte[] xb = BitConverter.GetBytes(x);
-                byte[] yb = BitConverter.GetBytes(y);
-                byte[] zb = BitConverter.GetBytes(z);
-
-                var bytes = xb.Concat(yb).Concat(zb);
-
-                bot.WriteBytes([.. bytes], ramOffset, RWMethod.Absolute);
-            }
-            catch
-            {
-                // Silently fail
-            }
-        }
-
-        private ulong GetPlayerCoordinatesOffset()
-        {
-            return bot.FollowMainPointer(jumpsPos) + 0x90;
-        }
-
-        private void OnClickRefresh(object sender, EventArgs e)
+        private async void OnClickRefresh(object sender, EventArgs e)
         {
             if (sender == btnRefreshTime)
             {
-                if (bot != null && bot.Connected)
+                if (ConnectionWrapper.Connected)
                 {
                     try
                     {
-                        shinyHunter.SetTime(bot, (TimeOfDay)cBForcedTimeOfDay.SelectedItem!, false);
+                        TimeOfDay timeOfDay = TimeOfDay.Morning;
+                        Invoke(() => timeOfDay = (TimeOfDay)cBForcedTimeOfDay.SelectedItem!);
+                        await shinyHunter.SetTime(timeOfDay, GlobalToken, false);
                     }
                     catch
                     {
-                        MessageBox.Show("Error Setting the time. Please check your connection to the Switch");
+                        BeginInvoke(() => MessageBox.Show("Error Setting the time. Please check your connection to the Switch"));
                     }
                 }
                 else
                 {
-                    MessageBox.Show("Not connected to SysBot.");
+                    BeginInvoke(() => MessageBox.Show("Not connected to SysBot."));
                 }
             }
             else if (sender == btnRefreshWeather)
             {
-                if (bot != null && bot.Connected)
+                if (ConnectionWrapper.Connected)
                 {
                     try
                     {
-                        shinyHunter.SetWeather(bot, (Weather)cBForcedWeather.SelectedItem!, false);
+                        Weather weather = Weather.None;
+                        Invoke(() => weather = (Weather)cBForcedWeather.SelectedItem!);
+                        await shinyHunter.SetWeather(weather, GlobalToken, false);
                     }
                     catch
                     {
-                        MessageBox.Show("Error Setting the weather. Please check your connection to the Switch");
+                        BeginInvoke(() => MessageBox.Show("Error Setting the weather. Please check your connection to the Switch"));
                     }
                 }
                 else
                 {
-                    MessageBox.Show("Not connected to SysBot.");
+                    BeginInvoke(() => MessageBox.Show("Not connected to SysBot."));
                 }
             }
         }
@@ -680,19 +756,16 @@ namespace ZAShinyWarper
                 cBSpecies.SetItemChecked(i, false);
             }
             cBSpecies.SetItemChecked(0, true);
+
+
             foreach (var cb in CBIVs)
             {
                 cb.SelectedIndex = 0;
             }
+
             nUDScaleMin.Value = 0;
             nUDScaleMax.Value = 255;
             SaveConfig();
-        }
-
-        private void LoadAllAndUpdateUI()
-        {
-            LoadConfig();
-            UpdateUI();
         }
 
         private void SaveAllAndUpdateUI()
@@ -703,37 +776,36 @@ namespace ZAShinyWarper
 
         private void UpdateUI()
         {
-            lBCoords.SelectedIndex = -1;
-            lBCoords.Items.Clear();
-            foreach (var pos in positions)
-                lBCoords.Items.Add(pos);
-        }
-
-        private void OnConfigurationChange(object sender, EventArgs e)
-        {
-            // Save config when any configuration changes
-            // Use BeginInvoke to ensure the change is applied before saving
-            BeginInvoke(new Action(() => SaveConfig()));
+            Invoke(() =>
+                {
+                    lBCoords.SelectedIndex = -1;
+                    lBCoords.Items.Clear();
+                    foreach (var pos in positions)
+                        lBCoords.Items.Add(pos);
+                });
         }
 
         private void OnAlphaCheckedChanged(object? sender, EventArgs e)
         {
-            if (cBIsAlpha.Checked)
+            bool isChecked = cBIsAlpha.Checked;
+
+            if (isChecked)
             {
                 nUDScaleMin.Value = 255;
                 nUDScaleMin.Enabled = false;
+
                 nUDScaleMax.Value = 255;
                 nUDScaleMax.Enabled = false;
+
             }
             else
             {
                 nUDScaleMin.Enabled = true;
                 nUDScaleMin.Value = 0;
+
                 nUDScaleMax.Enabled = true;
                 nUDScaleMax.Value = 255;
             }
-
-            OnConfigurationChange(sender, e);
         }
 
         private void SaveConfig()
@@ -845,99 +917,103 @@ namespace ZAShinyWarper
 
         private void SetUIEnableState(bool wifi, bool enabled)
         {
-            gBControls.Enabled = enabled;
-            gBShinyHunt.Enabled = enabled;
-            gBStashedShiny.Enabled = enabled;
-            btnScreenOn.Enabled = enabled;
-            btnScreenOff.Enabled = enabled;
-            btnWebhookSettings.Enabled = enabled;
-            btnWarp.Enabled = enabled;
-            btnResetFilters.Enabled = enabled;
-            btnExportSets.Enabled = enabled;
-            btnMonitoring.Enabled = enabled;
+            Invoke(() =>
+            {
+                gBControls.Enabled = enabled;
+                gBShinyHunt.Enabled = enabled;
+                gBStashedShiny.Enabled = enabled;
+                btnScreenOn.Enabled = enabled;
+                btnScreenOff.Enabled = enabled;
+                btnWebhookSettings.Enabled = enabled;
+                btnWarp.Enabled = enabled;
+                btnResetFilters.Enabled = enabled;
+                btnExportSets.Enabled = enabled;
+                btnMonitoring.Enabled = enabled;
 
-            if (wifi)
-            {
-                btnConnect.Text = enabled ? "Disconnect" : "Connect";
-                btnConnect.Enabled = true;
-                btnConnectUSB.Enabled = !enabled;
-            }
-            else
-            {
-                btnConnectUSB.Text = enabled ? "Disconnect USB" : "Connect USB";
-                btnConnectUSB.Enabled = true;
-                btnConnect.Enabled = !enabled;
-            }
+                if (wifi)
+                {
+                    btnConnect.Text = enabled ? "Disconnect" : "Connect";
+                    btnConnect.Enabled = true;
+                    btnConnectUSB.Enabled = !enabled;
+                }
+                else
+                {
+                    btnConnectUSB.Text = enabled ? "Disconnect USB" : "Connect USB";
+                    btnConnectUSB.Enabled = true;
+                    btnConnect.Enabled = !enabled;
+                }
+            });
         }
 
         private void SetFiltersEnableState(bool enabled)
         {
-            cBSpecies.PerformSafely(() => cBSpecies.Enabled = enabled);
-            foreach (var cb in CBIVs)
-                cb.PerformSafely(() => cb.Enabled = enabled);
-            cBWhenShinyFound.PerformSafely(() => cBWhenShinyFound.Enabled = enabled);
-            cBForcedWeather.PerformSafely(() => cBForcedWeather.Enabled = enabled);
-            cBForcedTimeOfDay.PerformSafely(() => cBForcedTimeOfDay.Enabled = enabled);
-            btnRefreshWeather.PerformSafely(() => btnRefreshWeather.Enabled = enabled);
-            btnRefreshTime.PerformSafely(() => btnRefreshTime.Enabled = enabled);
-            nUDCheckTime.PerformSafely(() => nUDCheckTime.Enabled = enabled);
-            nUDCamMove.PerformSafely(() => nUDCamMove.Enabled = enabled);
-            nUDSaveFreq.PerformSafely(() => nUDSaveFreq.Enabled = enabled);
-            gBControls.PerformSafely(() => gBControls.Enabled = enabled);
-            btnResetSpecies.PerformSafely(() => btnResetSpecies.Enabled = enabled);
-            cBIsAlpha.PerformSafely(() => cBIsAlpha.Enabled = enabled);
-            if (cBIsAlpha.Checked)
+
+            Invoke(() =>
             {
-                nUDScaleMin.PerformSafely(() => nUDScaleMin.Enabled = false);
-                nUDScaleMax.PerformSafely(() => nUDScaleMax.Enabled = false);
-            }
-            else
-            {
-                nUDScaleMin.PerformSafely(() => nUDScaleMin.Enabled = enabled);
-                nUDScaleMax.PerformSafely(() => nUDScaleMax.Enabled = enabled);
-            }
-            btnResetFilters.PerformSafely(() => btnResetFilters.Enabled = enabled);
-            btnMonitoring.PerformSafely(() => btnMonitoring.Enabled = enabled);
+                cBSpecies.Enabled = enabled;
+                foreach (var cb in CBIVs)
+                    cb.Enabled = enabled;
+                cBWhenShinyFound.Enabled = enabled;
+                cBForcedWeather.Enabled = enabled;
+                cBForcedTimeOfDay.Enabled = enabled;
+                btnRefreshWeather.Enabled = enabled;
+                btnRefreshTime.Enabled = enabled;
+                nUDCheckTime.Enabled = enabled;
+                nUDCamMove.Enabled = enabled;
+                nUDSaveFreq.Enabled = enabled;
+                gBControls.Enabled = enabled;
+                btnResetSpecies.Enabled = enabled;
+                cBIsAlpha.Enabled = enabled;
+
+                bool isAlphaChecked = false;
+                isAlphaChecked = cBIsAlpha.Checked;
+
+                if (isAlphaChecked)
+                {
+                    nUDScaleMin.Enabled = false;
+                    nUDScaleMax.Enabled = false;
+                }
+                else
+                {
+                    nUDScaleMin.Enabled = enabled;
+                    nUDScaleMax.Enabled = enabled;
+                }
+                btnResetFilters.Enabled = enabled;
+                btnMonitoring.Enabled = enabled;
+            });
         }
 
         private void SetWarpingEnableState(bool enabled)
         {
-            btnRestore.PerformSafely(() => btnRestore.Enabled = enabled);
-            btnSave.PerformSafely(() => btnSave.Enabled = enabled);
-            btnDelete.PerformSafely(() => btnDelete.Enabled = enabled);
-            btnWarp.PerformSafely(() => btnWarp.Enabled = enabled);
+
+            Invoke(() =>
+            {
+                btnRestore.Enabled = enabled;
+                btnSave.Enabled = enabled;
+                btnDelete.Enabled = enabled;
+                btnWarp.Enabled = enabled;
+            });
         }
 
-        private void CleanUpBot()
+        private async Task CleanUpBotAsync()
         {
             try
             {
                 shinyHunter.UnlockTime();
                 shinyHunter.UnlockWeather();
-                if (bot?.Connected == true)
+                if (ConnectionWrapper != null && ConnectionWrapper.Connected)
                 {
-                    bot.SendBytes(Encoding.ASCII.GetBytes("setStick RIGHT 0 0\r\n"));
-                    bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
+                    await ConnectionWrapper.OnClose(GlobalToken);
                 }
             }
-            catch
+            catch (OperationCanceledException)
             {
-                // Silently fail
+                // Expected during shutdown
             }
-        }
-
-        private static async Task SaveGame()
-        {
-            bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
-            await Task.Delay(1_000).ConfigureAwait(false);
-            bot.SendBytes(Encoding.ASCII.GetBytes("click R\r\n"));
-            await Task.Delay(1_000).ConfigureAwait(false);
-            bot.SendBytes(Encoding.ASCII.GetBytes("click A\r\n"));
-            await Task.Delay(5_000).ConfigureAwait(false); // wait for save
-            bot.SendBytes(Encoding.ASCII.GetBytes("click B\r\n"));
-            await Task.Delay(0_800).ConfigureAwait(false);
-            bot.SendBytes(Encoding.ASCII.GetBytes("click B\r\n"));
-            await Task.Delay(0_800).ConfigureAwait(false);
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error during cleanup: {ex.Message}");
+            }
         }
 
         private async void OnClickWarp(object sender, EventArgs e)
@@ -946,8 +1022,8 @@ namespace ZAShinyWarper
             {
                 warping = false;
                 SetFiltersEnableState(true);
-                btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
-                CleanUpBot();
+                Invoke(() => btnWarp.Text = "Start Warping");
+                await CleanUpBotAsync();
                 return;
             }
 
@@ -958,38 +1034,55 @@ namespace ZAShinyWarper
             }
 
             var filter = GetFilter();
-            var warpInterval = (int)nUDCheckTime.Value;
-            var camSpeed = (int)nUDCamMove.Value;
-            var action = (ShinyFoundAction)cBWhenShinyFound.SelectedItem!;
-            var saveFrequency = (int)nUDSaveFreq.Value;
+            int warpInterval = 0;
+            int camSpeed = 0;
+            ShinyFoundAction action = ShinyFoundAction.StopOnFound;
+            int saveFrequency = 0;
+
+            Invoke(() =>
+            {
+                warpInterval = (int)nUDCheckTime.Value;
+                camSpeed = (int)nUDCamMove.Value;
+                action = (ShinyFoundAction)cBWhenShinyFound.SelectedItem!;
+                saveFrequency = (int)nUDSaveFreq.Value;
+            });
 
             currentWarps = 0;
 
             warping = true;
             matchingShinyFound = false;
             SetFiltersEnableState(false);
-            btnWarp.PerformSafely(() => btnWarp.Text = "Warping. Click to end.");
+            Invoke(() => btnWarp.Text = "Warping. Click to end.");
 
             // Set Time and Weather
-            shinyHunter.SetTime(bot, (TimeOfDay)cBForcedTimeOfDay.SelectedItem!);
-            shinyHunter.SetWeather(bot, (Weather)cBForcedWeather.SelectedItem!);
+            TimeOfDay timeOfDay = TimeOfDay.Morning;
+            Weather weather = Weather.None;
+
+            Invoke(() =>
+            {
+                timeOfDay = (TimeOfDay)cBForcedTimeOfDay.SelectedItem!;
+                weather = (Weather)cBForcedWeather.SelectedItem!;
+            });
+
 
             // Rotate camera for spawns
             if (camSpeed != 0)
-                bot.SendBytes(Encoding.ASCII.GetBytes($"setStick RIGHT {camSpeed} 0\r\n"));
+                await ConnectionWrapper.SetRotation(camSpeed, GlobalToken);
 
             // Refresh stashed shinies
-            _ = shinyHunter.LoadStashedShinies(bot);
+            await shinyHunter.LoadStashedShinies(GlobalToken);
             DisplayStashedShinies();
+            await shinyHunter.SetTime(timeOfDay, GlobalToken);
+            await shinyHunter.SetWeather(weather, GlobalToken);
 
             while (warping)
             {
                 currentWarps++;
                 if (currentWarps % saveFrequency == 0)
-                    await SaveGame().ConfigureAwait(false);
+                    await ConnectionWrapper.SaveGame(GlobalToken).ConfigureAwait(false);
 
                 // Check shinies first as a new one may have spawned before we move
-                var newFound = shinyHunter.LoadStashedShinies(bot);
+                var newFound = await shinyHunter.LoadStashedShinies(GlobalToken);
                 var cacheIsFull = shinyHunter.StashedShinies.Count == 10;
 
                 if (newFound)
@@ -1016,7 +1109,10 @@ namespace ZAShinyWarper
                         }
                         else if (matchesFilter && action == ShinyFoundAction.ClearAndContinue) // Found what we wanted, keep going
                         {
-                            MessageBox.Show($"We Found A Match after {currentWarps} attempts! Let's keep going to find more!\r\n\r\n{pk}\r\n", "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            BeginInvoke(() =>
+                            {
+                                MessageBox.Show($"We Found A Match after {currentWarps} attempts! Let's keep going to find more!\r\n\r\n{pk}\r\n", "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            });
                         }
                         else if (matchesFilter && cacheIsFull && action != ShinyFoundAction.StopOnFound) // Found what we wanted in this run and the cache is full
                         {
@@ -1027,9 +1123,9 @@ namespace ZAShinyWarper
                         {
                             shouldSendEmbed = false;
                             int index = shinyHunter.StashedShinies.IndexOf(pk);
-                            shinyHunter.ClearSingleFromCache(bot, index); // keep removing until we have a whole cache of matches
+                            await shinyHunter.ClearSingleFromCache(index, GlobalToken); // keep removing until we have a whole cache of matches
                             shinyHunter.StashedShinies.RemoveAt(index);
-                            StashList[index].PerformSafely(() => StashList[index].Image = null);
+                            Invoke(() => StashList[index].Image = null);
                             DisplayStashedShinies();
                         }
                         else if (!matchesFilter && cacheIsFull) // Does not match filter but the cache is full
@@ -1066,19 +1162,20 @@ namespace ZAShinyWarper
                     }
 
                     // Helper methods
-                    void StopWarping(string message)
+                    async void StopWarping(string message)
                     {
                         warping = false;
-                        CleanUpBot();
-                        bot.SendBytes(Encoding.ASCII.GetBytes("click X\r\n"));
-                        btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
+                        await ConnectionWrapper.OpenMenu(GlobalToken);
+                        await CleanUpBotAsync();
+
+                        Invoke(() => btnWarp.Text = "Start Warping");
                         SetFiltersEnableState(true);
-                        MessageBox.Show(message, cacheIsFull ? "Cache Full!" : "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        BeginInvoke(() => MessageBox.Show(message, cacheIsFull ? "Cache Full!" : "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning));
                     }
 
                     void ShowUnwantedShinyMessage(StashedShiny<PA9> pk)
                     {
-                        CrossThreadExtensions.DoThreaded(() =>
+                        BeginInvoke(() =>
                         {
                             MessageBox.Show($"The following Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}has been found, but does not match your filter.\r\nYou may wish to remove it such that it doesn't occupy one of your shiny stash slots.\r\n\r\n{pk}\r\n",
                                 "Found something we don't want!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1090,7 +1187,7 @@ namespace ZAShinyWarper
                 {
                     if (!warping)
                         return;
-                    SetPlayerPosition(pos.X, pos.Y, pos.Z);
+                    await ConnectionWrapper.SetPlayerPosition(pos.X, pos.Y, pos.Z, GlobalToken);
                     await Task.Delay(1_000).ConfigureAwait(false); // fall out and load species
                                                                    // handle falling out
                     int tries = 25;
@@ -1100,19 +1197,20 @@ namespace ZAShinyWarper
                             break;
 
                         // check for less than 0.02 difference to avoid float precision issues. We only care about Y here as X/Z may vary due to terrain
-                        if (GetPlayerPosition().Y >= pos.Y - 0.02f && GetPlayerPosition().Y <= pos.Y + 0.02f)
+                        var position = await ConnectionWrapper.GetPlayerPositionAsync(GlobalToken).ConfigureAwait(false);
+                        if (position.Y >= pos.Y - 0.02f && position.Y <= pos.Y + 0.02f)
                             break;
-                        SetPlayerPosition(pos.X, pos.Y + (tries > 20 ? 1 : 0), pos.Z);
+                        await ConnectionWrapper.SetPlayerPosition(pos.X, pos.Y + (tries > 20 ? 1 : 0), pos.Z, GlobalToken);
                         await Task.Delay(1_200).ConfigureAwait(false);
                     }
 
                     if (tries == 0) // failed to load
                     {
                         warping = false;
-                        CleanUpBot();
-                        btnWarp.PerformSafely(() => btnWarp.Text = "Start Warping");
+                        await CleanUpBotAsync();
+                        Invoke(() => btnWarp.Text = "Start Warping");
                         SetFiltersEnableState(true);
-                        MessageBox.Show($"Warping has failed, please check the console!");
+                        BeginInvoke(() => MessageBox.Show($"Warping has failed, please check the console!"));
                         break;
                     }
 
@@ -1212,79 +1310,89 @@ namespace ZAShinyWarper
         private void OnMouseHover(object sender, EventArgs e)
         {
             PictureBox pb = (PictureBox)sender;
-            pb.BorderStyle = BorderStyle.FixedSingle;
+            Invoke(() => pb.BorderStyle = BorderStyle.FixedSingle);
 
             int index = StashList.IndexOf(pb);
             if (index >= 0 && index < shinyHunter.StashedShinies.Count)
             {
-                ShinyInfo.SetToolTip(pb, shinyHunter.StashedShinies[index].ToString());
+                if (InvokeRequired)
+                    Invoke(() => ShinyInfo.SetToolTip(pb, shinyHunter.StashedShinies[index].ToString()));
+                else
+                    ShinyInfo.SetToolTip(pb, shinyHunter.StashedShinies[index].ToString());
+
             }
             else
             {
-                ShinyInfo.SetToolTip(pb, "No shiny data");
+                if (InvokeRequired)
+                    Invoke(() => ShinyInfo.SetToolTip(pb, "No shiny data"));
+                else
+                    ShinyInfo.SetToolTip(pb, "No shiny data");
             }
         }
 
         private void ResetSprites()
         {
-            foreach (var pb in StashList)
+            Invoke(() =>
             {
-                pb.PerformSafely(() => pb.Image = null);
-            }
+                foreach (var pb in StashList)
+                    pb.Image = null;
+            });
         }
 
         private void DisplayStashedShinies()
         {
-            // Initialize context menu
             if (shinyContextMenu == null)
             {
                 InitializeShinyContextMenu();
             }
 
-            ResetSprites();
-            for (int i = 0; i < shinyHunter.StashedShinies.Count; i++)
+            Invoke(() =>
             {
-                var pk = shinyHunter.StashedShinies[i].PKM;
-                var img = pk.Sprite();
-                StashList[i].PerformSafely(() => StashList[i].Image = img);
-            }
+                // Clear all sprites
+                foreach (var pb in StashList)
+                    pb.Image = null;
 
-            // Clear remaining slots if the count changed
-            for (int i = shinyHunter.StashedShinies.Count; i < 10; i++)
-            {
-                StashList[i].PerformSafely(() => StashList[i].Image = null);
-            }
+                // Set sprites for stashed shinies
+                for (int i = 0; i < shinyHunter.StashedShinies.Count; i++)
+                {
+                    var pk = shinyHunter.StashedShinies[i].PKM;
+                    StashList[i].Image = pk.Sprite();
+                }
+            });
         }
 
         private void InitializeShinyContextMenu()
         {
-            shinyContextMenu = new ContextMenuStrip();
-
-            var clearItem = new ToolStripMenuItem("Clear from Stash")
+            Invoke(() =>
             {
-                Name = "ClearOne"
-            };
-            clearItem.Click += ClearShinyFromStash;
-            shinyContextMenu.Items.Add(clearItem);
+                shinyContextMenu = new ContextMenuStrip();
 
-            var clearAllItems = new ToolStripMenuItem("Clear ALL from Stash")
-            {
-                Name = "ClearAll"
-            };
-            clearAllItems.Click += ClearStash;
-            shinyContextMenu.Items.Add(clearAllItems);
+                var clearItem = new ToolStripMenuItem("Clear from Stash")
+                {
+                    Name = "ClearOne"
+                };
+                clearItem.Click += ClearShinyFromStash;
+                shinyContextMenu.Items.Add(clearItem);
 
-            var refreshCache = new ToolStripMenuItem("Refresh")
-            {
-                Name = "Refresh"
-            };
-            refreshCache.Click += RefreshStash;
-            shinyContextMenu.Items.Add(refreshCache);
+                var clearAllItems = new ToolStripMenuItem("Clear ALL from Stash")
+                {
+                    Name = "ClearAll"
+                };
+                clearAllItems.Click += ClearStash;
+                shinyContextMenu.Items.Add(clearAllItems);
 
-            shinyContextMenu.Opening += ShinyContextMenuItems;
+                var refreshCache = new ToolStripMenuItem("Refresh")
+                {
+                    Name = "Refresh"
+                };
+                refreshCache.Click += RefreshStash;
+                shinyContextMenu.Items.Add(refreshCache);
 
-            foreach (var pb in StashList)
-                pb.ContextMenuStrip = shinyContextMenu;
+                shinyContextMenu.Opening += ShinyContextMenuItems;
+
+                foreach (var pb in StashList)
+                    pb.ContextMenuStrip = shinyContextMenu;
+            });
         }
 
         private void ShinyContextMenuItems(object? sender, EventArgs e)
@@ -1308,9 +1416,8 @@ namespace ZAShinyWarper
                 refresh.Visible = true; // always visible
         }
 
-        private void ClearShinyFromStash(object? sender, EventArgs e)
+        private async void ClearShinyFromStash(object? sender, EventArgs e)
         {
-            // Get the picture box that was right-clicked
             if (sender is not ToolStripMenuItem menuItem)
                 return;
             if (menuItem.Owner is not ContextMenuStrip contextMenu)
@@ -1323,47 +1430,50 @@ namespace ZAShinyWarper
             {
                 var shiny = shinyHunter.StashedShinies[index];
 
-                // Confirm with the user
-                var result = MessageBox.Show(
-                    $"Are you sure you want to clear {shiny.PKM.Nickname} from the stash?\n\nThis will despawn the Pokémon in-game.",
-                    "Confirm Clear",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
+                DialogResult result = DialogResult.No;
+                Invoke(() =>
+                {
+                    result = MessageBox.Show(
+                        $"Are you sure you want to clear {shiny.PKM.Nickname} from the stash?\n\nThis will despawn the Pokémon in-game.",
+                        "Confirm Clear",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+                });
 
                 if (result == DialogResult.Yes)
                 {
                     try
                     {
-                        // Call the despawn method
-                        shinyHunter.ClearSingleFromCache(bot, index);
-
-                        // Reload the stashed shinies
-                        shinyHunter.LoadStashedShinies(bot);
-
-                        // Update the display
+                        await shinyHunter.ClearSingleFromCache(index, GlobalToken);
+                        await shinyHunter.LoadStashedShinies(GlobalToken);
                         DisplayStashedShinies();
 
-                        MessageBox.Show(
-                            $"{shiny.PKM.Nickname} has been cleared from the stash.",
-                            "Success",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Information);
+                        BeginInvoke(() =>
+                        {
+                            MessageBox.Show(
+                                $"{shiny.PKM.Nickname} has been cleared from the stash.",
+                                "Success",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+                        });
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(
-                            $"Error clearing shiny from stash: {ex.Message}",
-                            "Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
+                        BeginInvoke(() =>
+                        {
+                            MessageBox.Show(
+                                $"Error clearing shiny from stash: {ex.Message}",
+                                "Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                        });
                     }
                 }
             }
         }
 
-        private void ClearStash(object? sender, EventArgs e)
+        private async void ClearStash(object? sender, EventArgs e)
         {
-            // Get the picture box that was right-clicked
             if (sender is not ToolStripMenuItem menuItem)
                 return;
             if (menuItem.Owner is not ContextMenuStrip contextMenu)
@@ -1373,45 +1483,49 @@ namespace ZAShinyWarper
 
             if (shinyHunter.StashedShinies.Count != 0)
             {
-                // Confirm with the user
-                var result = MessageBox.Show(
-                    $"Are you sure you want to clear ALL stashed shinies?\n\nThis will despawn all current shinies in-game.",
-                    "Confirm Clear",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
+                DialogResult result = DialogResult.No;
+                Invoke(() =>
+                {
+                    result = MessageBox.Show(
+                        $"Are you sure you want to clear ALL stashed shinies?\n\nThis will despawn all current shinies in-game.",
+                        "Confirm Clear",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+                });
 
                 if (result == DialogResult.Yes)
                 {
                     try
                     {
-                        // Call the despawn method
-                        shinyHunter.ClearAllFromCache(bot);
-
-                        // Reload the stashed shinies
-                        shinyHunter.LoadStashedShinies(bot);
-
-                        // Update the display
+                        await shinyHunter.ClearAllFromCache(GlobalToken);
+                        await shinyHunter.LoadStashedShinies(GlobalToken);
                         DisplayStashedShinies();
 
-                        MessageBox.Show(
-                            $"All Pokémon have been cleared from the stash.",
-                            "Success",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Information);
+                        BeginInvoke(() =>
+                        {
+                            MessageBox.Show(
+                                $"All Pokémon have been cleared from the stash.",
+                                "Success",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+                        });
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(
-                            $"Error clearing shiny from stash: {ex.Message}",
-                            "Error",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Error);
+                        BeginInvoke(() =>
+                        {
+                            MessageBox.Show(
+                                $"Error clearing shiny from stash: {ex.Message}",
+                                "Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                        });
                     }
                 }
             }
         }
 
-        private void RefreshStash(object? sender, EventArgs e)
+        private async void RefreshStash(object? sender, EventArgs e)
         {
             // Get the picture box that was right-clicked
             if (sender is not ToolStripMenuItem menuItem)
@@ -1423,18 +1537,24 @@ namespace ZAShinyWarper
             try
             {
                 // Reload the stashed shinies
-                shinyHunter.LoadStashedShinies(bot);
+                await shinyHunter.LoadStashedShinies(GlobalToken);
                 // Update the display
                 DisplayStashedShinies();
-                MessageBox.Show(ActiveForm, $"Shiny stash has been refreshed.", "Success",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                BeginInvoke(() =>
+                {
+                    MessageBox.Show(ActiveForm, $"Shiny stash has been refreshed.", "Success",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                });
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error refreshing shiny stash: {ex.Message}", "Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                BeginInvoke(() =>
+                {
+                    MessageBox.Show($"Error refreshing shiny stash: {ex.Message}", "Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                });
             }
         }
 
@@ -1442,27 +1562,33 @@ namespace ZAShinyWarper
         {
             if (shinyHunter.StashedShinies.Count == 0)
             {
-                MessageBox.Show("Nothing to export",
-                                "Export",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Information);
+                BeginInvoke(() =>
+                {
+                    MessageBox.Show("Nothing to export",
+                                    "Export",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Information);
+                });
                 return;
             }
 
-            var result = MessageBox.Show("Export the currently stashed shiny Pokémon to Showdown format?",
-                                         "Export Confirmation",
-                                         MessageBoxButtons.YesNo,
-                                         MessageBoxIcon.Question);
-
-            if (result == DialogResult.Yes)
+            BeginInvoke(() =>
             {
-                var exportPath = Path.GetFullPath("Sets.txt");
-                File.WriteAllText(exportPath, shinyHunter.GetShinyStashInfo(shinyHunter.StashedShinies));
-                MessageBox.Show($"Export successful!\n\nSaved to:\n{exportPath}",
-                                "Export Complete",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Information);
-            }
+                var result = MessageBox.Show("Export the currently stashed shiny Pokémon to Showdown format?",
+                                             "Export Confirmation",
+                                             MessageBoxButtons.YesNo,
+                                             MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    var exportPath = Path.GetFullPath("Sets.txt");
+                    File.WriteAllText(exportPath, shinyHunter.GetShinyStashInfo(shinyHunter.StashedShinies));
+                    MessageBox.Show($"Export successful!\n\nSaved to:\n{exportPath}",
+                                    "Export Complete",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Information);
+                }
+            });
         }
 
         private async Task SendWebhook(string showdownSet, PA9 pk)
@@ -1527,10 +1653,13 @@ namespace ZAShinyWarper
 
             if (failedPosts.Count > 0)
             {
-                MessageBox.Show($"Failed to send {failedPosts.Count} webhook(s):\n\n{string.Join("\n", failedPosts)}",
+                BeginInvoke(() =>
+                {
+                    MessageBox.Show($"Failed to send {failedPosts.Count} webhook(s):\n\n{string.Join("\n", failedPosts)}",
                                 "Webhook Error",
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Error);
+                });
             }
         }
 
@@ -1571,7 +1700,7 @@ namespace ZAShinyWarper
                     {
                         for (int i = 0; i < cBSpecies.Items.Count; i++)
                         {
-                            cBSpecies.SetItemChecked(i, importedIndices.Contains(i));
+                            Invoke(() => cBSpecies.SetItemChecked(i, importedIndices.Contains(i)));
                         }
                     }
                 }
@@ -1633,10 +1762,10 @@ namespace ZAShinyWarper
                     Vector3 vector = Vector3.FromString(clipboardText);
 
                     int insertIndex = lBCoords.SelectedIndex;
-                    lBCoords.Items.Insert(insertIndex, vector);
+                    Invoke(() => lBCoords.Items.Insert(insertIndex, vector));
                     positions.Insert(insertIndex, vector);
                     SaveAllAndUpdateUI();
-                    lBCoords.SelectedIndex = insertIndex;
+                    Invoke(() => lBCoords.SelectedIndex = insertIndex);
                 }
                 catch (Exception ex)
                 {
@@ -1661,10 +1790,10 @@ namespace ZAShinyWarper
                     Vector3 vector = Vector3.FromString(clipboardText);
 
                     int insertIndex = lBCoords.SelectedIndex;
-                    lBCoords.Items.Insert(insertIndex + 1, vector);
+                    Invoke(() => lBCoords.Items.Insert(insertIndex + 1, vector));
                     positions.Insert(insertIndex + 1, vector);
                     SaveAllAndUpdateUI();
-                    lBCoords.SelectedIndex = insertIndex;
+                    Invoke(() => lBCoords.SelectedIndex = insertIndex);
                 }
                 catch (Exception ex)
                 {
@@ -1686,28 +1815,31 @@ namespace ZAShinyWarper
                 int index = lBCoords.IndexFromPoint(e.Location);
                 if (index >= 0 && index < lBCoords.Items.Count)
                 {
-                    lBCoords.SelectedIndex = index;
+                    Invoke(() => lBCoords.SelectedIndex = index);
                 }
             }
         }
 
         private void OnClickMonitoring(object sender, EventArgs e)
         {
-            if (monitoring)
+            Invoke(() =>
             {
-                monitoring = false;
-                btnMonitoring.PerformSafely(() => btnMonitoring.Text = "Start Monitoring");
-                btnWarp.PerformSafely(() => btnWarp.Enabled = true);
-                _monitoringCts?.Cancel();
-            }
-            else
-            {
-                monitoring = true;
-                btnWarp.PerformSafely(() => btnWarp.Enabled = false);
-                btnMonitoring.PerformSafely(() => btnMonitoring.Text = "Monitoring. Click to end");
-                _monitoringCts = new CancellationTokenSource();
-                _ = MonitorStash(_monitoringCts.Token);
-            }
+                if (monitoring)
+                {
+                    monitoring = false;
+                    btnMonitoring.Text = "Start Monitoring";
+                    btnWarp.Enabled = true;
+                    _monitoringCts?.Cancel();
+                }
+                else
+                {
+                    monitoring = true;
+                    btnWarp.Enabled = false;
+                    btnMonitoring.Text = "Monitoring. Click to end";
+                    _monitoringCts = new CancellationTokenSource();
+                    _ = MonitorStash(_monitoringCts.Token);
+                }
+            });
         }
 
         private async Task MonitorStash(CancellationToken token)
@@ -1717,7 +1849,7 @@ namespace ZAShinyWarper
                 try
                 {
                     // Refresh stashed shinies
-                    var newFound = shinyHunter.LoadStashedShinies(bot);
+                    var newFound = await shinyHunter.LoadStashedShinies(GlobalToken);
                     if (newFound)
                     {
                         DisplayStashedShinies();
@@ -1725,7 +1857,7 @@ namespace ZAShinyWarper
                         foreach (var pk in newShinies)
                         {
                             await SendWebhook(pk.ToShowdownString(), pk.PKM);
-                            CrossThreadExtensions.DoThreaded(() =>
+                            BeginInvoke(() =>
                             {
                                 MessageBox.Show($"The following Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}has been found.\r\n\r\n{pk}\r\n",
                                     "Found something new!", MessageBoxButtons.OK, MessageBoxIcon.Warning);

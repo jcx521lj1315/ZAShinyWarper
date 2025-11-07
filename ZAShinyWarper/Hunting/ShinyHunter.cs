@@ -1,99 +1,64 @@
 ﻿using System.Diagnostics;
 using System.Text;
 using PKHeX.Core;
-using ZAShinyWarper.Injection;
 
 namespace ZAShinyWarper.Hunting
 {
-    public enum ShinyFoundAction
-    {
-        StopOnFound,
-        StopAtFullCache,
-        CacheAndContinue,
-        ClearAndContinue
-    }
-
-    public enum IVType
-    {
-        Any,
-        Perfect, // 31
-        Zero // 0
-    }
-    public enum Weather
-    {
-        None = -1,
-        Clear = 0,
-        Overcast = 1,
-        Rain = 2,
-        StrongWinds = 3,
-        Windy = 5,
-        MildWinds = 7,
-        Fog = 8,
-        IntenseSun = 9,
-    }
-
-    public enum TimeOfDay
-    {
-        None = -1, // Don't change
-        Morning = 14400,   // Beginning of Morning
-        Midday = 43200, // Mid-day
-        Night = 72000,  // Beggining of night
-        LateNight = 86400 // Mid-Night
-    }
-
-    public class ShinyHunter<T> where T : PKM, new()
+    public class ShinyHunter<T> : IDisposable where T : PKM, new()
     {
         private const int STASHED_SHINIES_MAX = 10;
         private const int PA9_SIZE = 0x148;
         private const int STRUCT_SIZE = 0x28;
         private const string STASH_FOLDER = "StashedShinies";
+
+        // Monitor intervals
+        private const int WEATHER_CHECK_INTERVAL_MS = 60000;  // 1 minute
+        private const int TIME_CHECK_INTERVAL_MS = 300000;    // 5 minutes
+        private const int ERROR_RETRY_DELAY_MS = 1000;        // 1 Second
+
         private Weather? _lockedWeather = null;
         private CancellationTokenSource? _weatherLockCts = null;
         private TimeOfDay? _lockedTime = null;
         private CancellationTokenSource? _timeLockCts = null;
-
-        //
-        // Pointers courtesy of Kunogi who's awesome for finding them!
-        //
-        // Base pointer
-        private readonly long[] basePointer = [0x4201D20];
-        // Array start
-        private readonly long[] arrayStartPointer = [0x4201D20, 0x350]; // [[main+4201D20]+350]
-        // Invalid start
-        private readonly long[] invalidStartPointer = [0x4201D20, 0x358]; // [[main+4201D20]+358]
-        // Weather pointer
-        public readonly long[] weatherPointer = [0x4200C20, 0x1B0]; // [[main+4200C20]+1B0]+0
-        // Time pointer
-        private readonly long[] timePointer = [0x4200C40, 0xD8]; // [[main+4200C40]+D8]+30
+        private ConnectionWrapper connectionWrapper = default!;
+        private bool _disposed = false;
 
         public IList<StashedShiny<T>> PreviousStashedShinies { get; private set; } = [];
         public IList<StashedShiny<T>> StashedShinies { get; private set; } = [];
         public IList<StashedShiny<T>> DifferentShinies { get; private set; } = [];
 
+        // Event for errors instead of MessageBox
+        public event EventHandler<string>? Error;
+
+        public void Initialize(ConnectionWrapper wrapper)
+        {
+            connectionWrapper = wrapper;
+        }
+
         /// <summary>
         /// Gets the count of stashed shinies by reading the array boundaries.
         /// </summary>
-        private int GetStashedShinyCount(IRAMReadWriter bot, out ulong structArrayStart)
+        private async Task<(int, ulong)> GetStashedShinyCount(CancellationToken token)
         {
-            structArrayStart = bot.FollowMainPointer(arrayStartPointer);
-            var invalidStartAddress = bot.FollowMainPointer(invalidStartPointer);
+            var structArrayStart = await connectionWrapper.GetArrayStartOffset(token);
+            var invalidStartAddress = await connectionWrapper.GetInvalidStartOffset(token);
 
             if (invalidStartAddress <= structArrayStart)
-                return 0;
+                return (0, structArrayStart);
 
-            return Math.Min((int)((invalidStartAddress - structArrayStart) / STRUCT_SIZE), STASHED_SHINIES_MAX);
+            return (Math.Min((int)((invalidStartAddress - structArrayStart) / STRUCT_SIZE), STASHED_SHINIES_MAX), structArrayStart);
         }
 
         /// <summary>
         /// Follows a chain of pointers starting from a base address.
         /// </summary>
         /// <returns>The final pointer address, or null if any pointer in the chain is 0</returns>
-        private static ulong? FollowPointerChain(IRAMReadWriter bot, ulong startAddress, params ulong[] offsets)
+        private async Task<ulong?> FollowPointerChain(ulong startAddress, CancellationToken token, params ulong[] offsets)
         {
             ulong current = startAddress;
             foreach (var offset in offsets)
             {
-                var data = bot.ReadBytes(current + offset, 8, RWMethod.Absolute);
+                var data = await connectionWrapper.ReadBytesAbsolute(current + offset, 8, token);
                 current = BitConverter.ToUInt64(data, 0);
                 if (current == 0)
                     return null;
@@ -109,64 +74,61 @@ namespace ZAShinyWarper.Hunting
             return (T)Activator.CreateInstance(typeof(T), new Memory<byte>(data))!;
         }
 
-        public void SetWeather(IRAMReadWriter bot, Weather weather, bool forced = true)
+        public async Task SetWeather(Weather weather, CancellationToken token, bool forced = true)
         {
             try
             {
-                var weatherAddress = bot.FollowMainPointer(weatherPointer); // Get address
-
                 if (weather == Weather.None && forced)
                 {
                     UnlockWeather();
                     return;
                 }
-                else if (weather != Weather.None)
+
+                if (weather != Weather.None)
                 {
-                    var weatherBytes = BitConverter.GetBytes((uint)weather); // Convert to bytes
-                    bot.WriteBytes(weatherBytes, weatherAddress, RWMethod.Absolute); // Write
+                    var weatherBytes = BitConverter.GetBytes((uint)weather);
+                    await connectionWrapper.SetCurrentWeather(weatherBytes, token).ConfigureAwait(false);
+
                     if (forced)
-                        LockWeather(bot, weather); // lock
+                        LockWeather(weather);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // fail silently
+                Debug.WriteLine($"Error setting weather: {ex.Message}");
             }
         }
 
-        public void SetTime(IRAMReadWriter bot, TimeOfDay time, bool forced = true)
+        public async Task SetTime(TimeOfDay time, CancellationToken token, bool forced = true)
         {
             try
             {
-                var timeAddress = bot.FollowMainPointer(timePointer);
-                timeAddress += 0x30;
-
                 if (time == TimeOfDay.None && forced)
                 {
                     UnlockTime();
                     return;
                 }
-                else if (time != TimeOfDay.None)
+
+                if (time != TimeOfDay.None)
                 {
-                    // Cast enum to float
-                    var timeBytes = BitConverter.GetBytes((float)time); // Convert to bytes
-                    bot.WriteBytes(timeBytes, timeAddress, RWMethod.Absolute); // Write
+                    var timeBytes = BitConverter.GetBytes((float)time);
+                    await connectionWrapper.SetCurrentTime(timeBytes, token).ConfigureAwait(false);
+
                     if (forced)
-                        LockTime(bot, time);
+                        LockTime(time);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // fail silently
+                Debug.WriteLine($"Error setting time: {ex.Message}");
             }
         }
 
         /// <summary>
         /// Loads the stashed shinies from RAM, compares them to previous and saves
         /// </summary>
-        /// <param name="bot"></param>
         /// <returns>whether or not a new one has entered since previous</returns>
-        public bool LoadStashedShinies(IRAMReadWriter bot)
+        public async Task<bool> LoadStashedShinies(CancellationToken token)
         {
             PreviousStashedShinies = StashedShinies;
             StashedShinies = [];
@@ -176,7 +138,7 @@ namespace ZAShinyWarper.Hunting
                 Directory.CreateDirectory(STASH_FOLDER);
 
             // Get the actual count and start address of stashed shinies
-            int stashCount = GetStashedShinyCount(bot, out ulong structArrayStart);
+            (int stashCount, ulong structArrayStart) = await GetStashedShinyCount(token);
 
             if (stashCount == 0)
             {
@@ -192,7 +154,7 @@ namespace ZAShinyWarper.Hunting
                     var structOffset = structArrayStart + (ulong)(i * STRUCT_SIZE);
 
                     // Read the 0x28 structure: u64 hash, u64 address, 3x u64 unknown
-                    var structData = bot.ReadBytes(structOffset, STRUCT_SIZE, RWMethod.Absolute);
+                    var structData = await connectionWrapper.ReadBytesAbsolute(structOffset, STRUCT_SIZE, token);
 
                     var hash = BitConverter.ToUInt64(structData, 0);
                     var address = BitConverter.ToUInt64(structData, 8);
@@ -202,13 +164,13 @@ namespace ZAShinyWarper.Hunting
                         continue;
 
                     // Follow pointer chain: [[[address]+50]+30]+0]
-                    var pkmAddress = ShinyHunter<T>.FollowPointerChain(bot, address, 0x50, 0x30);
+                    var pkmAddress = await FollowPointerChain(address, token, 0x50, 0x30).ConfigureAwait(false);
                     if (!pkmAddress.HasValue)
                         continue;
 
                     // Read the PKM data (0x148 bytes)
-                    var pkmData = bot.ReadBytes(pkmAddress.Value, PA9_SIZE, RWMethod.Absolute);
-                    var pk = ShinyHunter<T>.CreatePKM(pkmData);
+                    var pkmData = await connectionWrapper.ReadBytesAbsolute(pkmAddress.Value, PA9_SIZE, token);
+                    var pk = CreatePKM(pkmData);
 
                     if (pk.Species != 0 && !StashedShinies.Any(x => x.EncryptionConstant == pk.EncryptionConstant))
                     {
@@ -232,20 +194,19 @@ namespace ZAShinyWarper.Hunting
         /// <summary>
         /// Despawns a shiny by setting its address to 0 and moving it to the end of the array.
         /// </summary>
-        /// <param name="bot"></param>
         /// <param name="index">Index of the shiny to despawn (0-based)</param>
-        public void ClearSingleFromCache(IRAMReadWriter bot, int index)
+        public async Task ClearSingleFromCache(int index, CancellationToken token)
         {
             try
             {
-                int stashCount = GetStashedShinyCount(bot, out ulong structArrayStart);
+                (int stashCount, ulong structArrayStart) = await GetStashedShinyCount(token);
 
                 if (index < 0 || index >= stashCount)
                     throw new ArgumentOutOfRangeException(nameof(index), "Index out of range for current stash count.");
 
                 // Read the structure to despawn
                 var structOffset = structArrayStart + (ulong)(index * STRUCT_SIZE);
-                var structData = bot.ReadBytes(structOffset, STRUCT_SIZE, RWMethod.Absolute);
+                var structData = await connectionWrapper.ReadBytesAbsolute(structOffset, STRUCT_SIZE, token);
 
                 // Set the address to 0 (offset 8 in the structure)
                 Array.Clear(structData, 8, 8);
@@ -253,25 +214,26 @@ namespace ZAShinyWarper.Hunting
                 // Shift all structures after this one down by one position
                 for (int i = index; i < stashCount - 1; i++)
                 {
-                    var nextData = bot.ReadBytes(structArrayStart + (ulong)((i + 1) * STRUCT_SIZE), STRUCT_SIZE, RWMethod.Absolute);
-                    bot.WriteBytes(nextData, structArrayStart + (ulong)(i * STRUCT_SIZE), RWMethod.Absolute);
+                    var nextData = await connectionWrapper.ReadBytesAbsolute(structArrayStart + (ulong)((i + 1) * STRUCT_SIZE), STRUCT_SIZE, token);
+                    await connectionWrapper.WriteBytesAbsolute(nextData, structArrayStart + (ulong)(i * STRUCT_SIZE), token);
                 }
 
                 // Write the despawned structure at the end
                 var lastStructOffset = structArrayStart + (ulong)((stashCount - 1) * STRUCT_SIZE);
-                bot.WriteBytes(structData, lastStructOffset, RWMethod.Absolute);
+                await connectionWrapper.WriteBytesAbsolute(structData, lastStructOffset, token);
 
                 // Update the invalid start address (decrease by one structure size)
-                var invalidStartAddress = bot.FollowMainPointer(invalidStartPointer);
+                var invalidStartAddress = await connectionWrapper.GetInvalidStartOffset(token);
                 var newInvalidStartAddress = invalidStartAddress - STRUCT_SIZE;
 
                 // Write the new invalid start address back to [[main+4201D20]+358]
-                var metadataBase = bot.FollowMainPointer(basePointer);
-                bot.WriteBytes(BitConverter.GetBytes(newInvalidStartAddress), metadataBase + 0x358, RWMethod.Absolute);
+                var metadataBase = await connectionWrapper.GetMetaBaseOffset(token);
+                await connectionWrapper.WriteBytesAbsolute(BitConverter.GetBytes(newInvalidStartAddress), metadataBase + 0x358, token);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to remove the shiny from stash. Please check your connection to the Switch.\n\nError: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Error?.Invoke(this, $"Failed to remove the shiny from stash. Please check your connection to the Switch.\n\nError: {ex.Message}");
+                throw;
             }
         }
 
@@ -279,16 +241,16 @@ namespace ZAShinyWarper.Hunting
         /// Clears all shinies from the cache by resetting the invalid start pointer to match the array start.
         /// This is much faster than iterating through each slot.
         /// </summary>
-        public void ClearAllFromCache(IRAMReadWriter bot)
+        public async Task ClearAllFromCache(CancellationToken token)
         {
             try
             {
                 // Get the array start address
-                var structArrayStart = bot.FollowMainPointer(arrayStartPointer);
+                var structArrayStart = await connectionWrapper.GetArrayStartOffset(token);
 
                 // Set the invalid start address equal to the array start (making count = 0)
-                var metadataBase = bot.FollowMainPointer(basePointer);
-                bot.WriteBytes(BitConverter.GetBytes(structArrayStart), metadataBase + 0x358, RWMethod.Absolute);
+                var metadataBase = await connectionWrapper.GetMetaBaseOffset(token);
+                await connectionWrapper.WriteBytesAbsolute(BitConverter.GetBytes(structArrayStart), metadataBase + 0x358, token);
 
                 // Clear local cache
                 StashedShinies = [];
@@ -296,7 +258,8 @@ namespace ZAShinyWarper.Hunting
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to clear stash. Please check your connection to the Switch.\n\nError: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Error?.Invoke(this, $"Failed to clear stash. Please check your connection to the Switch.\n\nError: {ex.Message}");
+                throw;
             }
         }
 
@@ -313,13 +276,17 @@ namespace ZAShinyWarper.Hunting
             return info.ToString();
         }
 
-        public void LockWeather(IRAMReadWriter bot, Weather weather)
+        public void LockWeather(Weather weather)
         {
+            // Dispose old token source if it exists
+            _weatherLockCts?.Cancel();
+            _weatherLockCts?.Dispose();
+
             _lockedWeather = weather;
             _weatherLockCts = new CancellationTokenSource();
 
             // Start background task to monitor and maintain weather
-            Task.Run(() => MonitorWeather(bot, _weatherLockCts.Token));
+            _ = Task.Run(() => MonitorWeather(_weatherLockCts.Token));
         }
 
         public void UnlockWeather()
@@ -330,48 +297,17 @@ namespace ZAShinyWarper.Hunting
             _weatherLockCts = null;
         }
 
-        private async Task MonitorWeather(IRAMReadWriter bot, CancellationToken token)
+        public void LockTime(TimeOfDay time)
         {
-            while (!token.IsCancellationRequested && _lockedWeather.HasValue)
-            {
-                try
-                {
-                    var weatherAddress = bot.FollowMainPointer(weatherPointer);
+            // Dispose old token source if it exists
+            _timeLockCts?.Cancel();
+            _timeLockCts?.Dispose();
 
-                    // Read current weather
-                    var currentWeatherBytes = bot.ReadBytes(weatherAddress, 4, RWMethod.Absolute);
-                    var currentWeather = (Weather)BitConverter.ToUInt32(currentWeatherBytes, 0);
-
-                    // If it changed, write it back
-                    if (currentWeather != _lockedWeather.Value)
-                    {
-                        var weatherBytes = BitConverter.GetBytes((uint)_lockedWeather.Value);
-                        bot.WriteBytes(weatherBytes, weatherAddress, RWMethod.Absolute);
-                        Debug.WriteLine($"Weather changed from {currentWeather} to {_lockedWeather.Value}, correcting...");
-                    }
-
-                    // Check every minute
-                    await Task.Delay(60000, token);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error monitoring weather: {ex.Message}");
-                    await Task.Delay(1000, token).ConfigureAwait(false);
-                }
-            }
-        }
-
-        public void LockTime(IRAMReadWriter bot, TimeOfDay time)
-        {
             _lockedTime = time;
             _timeLockCts = new CancellationTokenSource();
 
-            // Start background task to monitor and maintain weather
-            Task.Run(() => MonitorTime(bot, _timeLockCts.Token));
+            // Start background task to monitor and maintain time
+            _ = Task.Run(() => MonitorTime(_timeLockCts.Token));
         }
 
         public void UnlockTime()
@@ -382,31 +318,55 @@ namespace ZAShinyWarper.Hunting
             _timeLockCts = null;
         }
 
-        private async Task MonitorTime(IRAMReadWriter bot, CancellationToken token)
+        private async Task MonitorWeather(CancellationToken token)
+        {
+            while (!token.IsCancellationRequested && _lockedWeather.HasValue)
+            {
+                try
+                {
+                    var targetWeather = _lockedWeather.Value;
+                    var currentWeatherBytes = await connectionWrapper.GetCurrentWeather(token).ConfigureAwait(false);
+                    var currentWeather = (Weather)BitConverter.ToUInt32(currentWeatherBytes, 0);
+
+                    if (currentWeather != targetWeather)
+                    {
+                        var weatherBytes = BitConverter.GetBytes((uint)targetWeather);
+                        await connectionWrapper.SetCurrentWeather(weatherBytes, token).ConfigureAwait(false);
+                        Debug.WriteLine($"Weather changed from {currentWeather} to {targetWeather}, correcting...");
+                    }
+
+                    await Task.Delay(WEATHER_CHECK_INTERVAL_MS, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error monitoring weather: {ex.Message}");
+                    await Task.Delay(ERROR_RETRY_DELAY_MS, token);
+                }
+            }
+        }
+
+        private async Task MonitorTime(CancellationToken token)
         {
             while (!token.IsCancellationRequested && _lockedTime.HasValue)
             {
                 try
                 {
-                    var timeAddress = bot.FollowMainPointer(timePointer);
-                    timeAddress += 0x30;
-
-                    // Read current time (f32 = 4 bytes)
-                    var currentTimeBytes = bot.ReadBytes(timeAddress, 4, RWMethod.Absolute);
+                    var targetTime = (float)_lockedTime.Value;
+                    var currentTimeBytes = await connectionWrapper.GetCurrentTime(token).ConfigureAwait(false);
                     var currentTime = BitConverter.ToSingle(currentTimeBytes, 0);
 
-                    var targetTime = (float)_lockedTime.Value;
-
-                    // It will always change, write it back
                     if (currentTime != targetTime)
                     {
                         var timeBytes = BitConverter.GetBytes(targetTime);
-                        bot.WriteBytes(timeBytes, timeAddress, RWMethod.Absolute);
+                        await connectionWrapper.SetCurrentTime(timeBytes, token).ConfigureAwait(false);
                         Debug.WriteLine($"Time drifted from {targetTime} to {currentTime}, correcting...");
                     }
 
-                    // Check every 3 minutes to match the cycles
-                    await Task.Delay(180000, token);
+                    await Task.Delay(TIME_CHECK_INTERVAL_MS, token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -415,8 +375,27 @@ namespace ZAShinyWarper.Hunting
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"Error monitoring time: {ex.Message}");
-                    await Task.Delay(1000, token).ConfigureAwait(false);
+                    await Task.Delay(ERROR_RETRY_DELAY_MS, token);
                 }
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    UnlockWeather();
+                    UnlockTime();
+                }
+                _disposed = true;
             }
         }
     }

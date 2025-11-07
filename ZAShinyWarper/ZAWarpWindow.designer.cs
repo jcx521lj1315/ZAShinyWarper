@@ -10,19 +10,6 @@ namespace ZAShinyWarper
         /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-
         #region Windows Form Designer generated code
 
         /// <summary>
@@ -152,7 +139,6 @@ namespace ZAShinyWarper
             tB_IP.Size = new Size(131, 23);
             tB_IP.TabIndex = 1;
             tB_IP.Text = "192.168.0.1";
-            tB_IP.TextChanged += OnConfigurationChange;
             // 
             // btnConnect
             // 
@@ -315,7 +301,6 @@ namespace ZAShinyWarper
             nUDDistance.Size = new Size(76, 23);
             nUDDistance.TabIndex = 12;
             nUDDistance.Value = new decimal(new int[] { 3, 0, 0, 0 });
-            nUDDistance.ValueChanged += OnConfigurationChange;
             // 
             // btnLeft
             // 
@@ -450,7 +435,6 @@ namespace ZAShinyWarper
             cBForcedTimeOfDay.Name = "cBForcedTimeOfDay";
             cBForcedTimeOfDay.Size = new Size(182, 23);
             cBForcedTimeOfDay.TabIndex = 37;
-            cBForcedTimeOfDay.SelectedIndexChanged += OnConfigurationChange;
             // 
             // btnRefreshTime
             // 
@@ -473,7 +457,6 @@ namespace ZAShinyWarper
             cBForcedWeather.Name = "cBForcedWeather";
             cBForcedWeather.Size = new Size(182, 23);
             cBForcedWeather.TabIndex = 35;
-            cBForcedWeather.SelectedIndexChanged += OnConfigurationChange;
             // 
             // btnRefreshWeather
             // 
@@ -556,7 +539,6 @@ namespace ZAShinyWarper
             nUDSaveFreq.Size = new Size(72, 23);
             nUDSaveFreq.TabIndex = 28;
             nUDSaveFreq.Value = new decimal(new int[] { 3, 0, 0, 0 });
-            nUDSaveFreq.ValueChanged += OnConfigurationChange;
             // 
             // lblSaveFreq
             // 
@@ -577,7 +559,6 @@ namespace ZAShinyWarper
             nUDCamMove.Size = new Size(204, 23);
             nUDCamMove.TabIndex = 26;
             nUDCamMove.Value = new decimal(new int[] { 16000, 0, 0, 0 });
-            nUDCamMove.ValueChanged += OnConfigurationChange;
             // 
             // lblCam
             // 
@@ -598,7 +579,6 @@ namespace ZAShinyWarper
             nUDCheckTime.Size = new Size(204, 23);
             nUDCheckTime.TabIndex = 24;
             nUDCheckTime.Value = new decimal(new int[] { 2000, 0, 0, 0 });
-            nUDCheckTime.ValueChanged += OnConfigurationChange;
             // 
             // label3
             // 
@@ -616,7 +596,6 @@ namespace ZAShinyWarper
             nUDScaleMin.Name = "nUDScaleMin";
             nUDScaleMin.Size = new Size(41, 23);
             nUDScaleMin.TabIndex = 22;
-            nUDScaleMin.ValueChanged += OnConfigurationChange;
             // 
             // nUDScaleMax
             // 
@@ -626,7 +605,6 @@ namespace ZAShinyWarper
             nUDScaleMax.Size = new Size(41, 23);
             nUDScaleMax.TabIndex = 22;
             nUDScaleMax.Value = new decimal(new int[] { 255, 0, 0, 0 });
-            nUDScaleMax.ValueChanged += OnConfigurationChange;
             // 
             // lblScaleMin
             // 
@@ -690,7 +668,6 @@ namespace ZAShinyWarper
             cBIVSpD.Name = "cBIVSpD";
             cBIVSpD.Size = new Size(64, 23);
             cBIVSpD.TabIndex = 15;
-            cBIVSpD.SelectedIndexChanged += OnConfigurationChange;
             // 
             // cBIVSpA
             // 
@@ -700,7 +677,6 @@ namespace ZAShinyWarper
             cBIVSpA.Name = "cBIVSpA";
             cBIVSpA.Size = new Size(65, 23);
             cBIVSpA.TabIndex = 14;
-            cBIVSpA.SelectedIndexChanged += OnConfigurationChange;
             // 
             // lblIVDef
             // 
@@ -737,7 +713,6 @@ namespace ZAShinyWarper
             cBIVDef.Name = "cBIVDef";
             cBIVDef.Size = new Size(65, 23);
             cBIVDef.TabIndex = 10;
-            cBIVDef.SelectedIndexChanged += OnConfigurationChange;
             // 
             // cBIVAtk
             // 
@@ -747,7 +722,6 @@ namespace ZAShinyWarper
             cBIVAtk.Name = "cBIVAtk";
             cBIVAtk.Size = new Size(64, 23);
             cBIVAtk.TabIndex = 9;
-            cBIVAtk.SelectedIndexChanged += OnConfigurationChange;
             // 
             // cBIVHP
             // 
@@ -757,7 +731,6 @@ namespace ZAShinyWarper
             cBIVHP.Name = "cBIVHP";
             cBIVHP.Size = new Size(65, 23);
             cBIVHP.TabIndex = 8;
-            cBIVHP.SelectedIndexChanged += OnConfigurationChange;
             // 
             // cBSpecies
             // 
@@ -768,7 +741,6 @@ namespace ZAShinyWarper
             cBSpecies.Name = "cBSpecies";
             cBSpecies.Size = new Size(204, 94);
             cBSpecies.TabIndex = 6;
-            cBSpecies.ItemCheck += OnConfigurationChange;
             cBSpecies.SelectedIndexChanged += OnSpeciesSelectedIndexChange;
             // 
             // btnResetSpecies
@@ -799,7 +771,6 @@ namespace ZAShinyWarper
             cBWhenShinyFound.Name = "cBWhenShinyFound";
             cBWhenShinyFound.Size = new Size(204, 23);
             cBWhenShinyFound.TabIndex = 3;
-            cBWhenShinyFound.SelectedIndexChanged += OnConfigurationChange;
             // 
             // lblShinyFound
             // 

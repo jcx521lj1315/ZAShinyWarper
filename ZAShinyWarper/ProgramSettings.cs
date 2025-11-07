@@ -1,4 +1,6 @@
-﻿namespace ZAShinyWarper
+﻿using SysBot.Base;
+
+namespace ZAShinyWarper
 {
     public class ProgramConfig
     {
@@ -22,6 +24,8 @@
         public int IVSpA { get; set; } = 0;
         public int IVSpD { get; set; } = 0;
         public int IVSpe { get; set; } = 0;
+        public int UsbPort { get; set; } = 0;
+        public SwitchProtocol Protocol { get; set; } = SwitchProtocol.WiFi;
     }
 
     public class WebhookData
