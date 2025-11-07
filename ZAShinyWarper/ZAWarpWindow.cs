@@ -1015,7 +1015,7 @@ namespace ZAShinyWarper
                         else if (!matchesFilter) // No match, still room in cache
                         {
                             ShowUnwantedShinyMessage(pk);
-                        }             
+                        }
 
                         if (shouldSendEmbed)
                             await SendWebhook(pk.ToShowdownString(), pk.PKM);
@@ -1123,18 +1123,14 @@ namespace ZAShinyWarper
         {
             PictureBox pb = (PictureBox)sender;
             pb.BorderStyle = BorderStyle.FixedSingle;
-            ShinyInfo.Hide(pb);
-            ShinyInfo.Active = false;
-            ShinyInfo.Active = true;
+
             int index = StashList.IndexOf(pb);
             if (index >= 0 && index < shinyHunter.StashedShinies.Count)
             {
-                pb.ContextMenuStrip = shinyContextMenu; // Enable context menu
                 ShinyInfo.SetToolTip(pb, shinyHunter.StashedShinies[index].ToString());
             }
             else
             {
-                pb.ContextMenuStrip = null; // Disable context menu for empty slots
                 ShinyInfo.SetToolTip(pb, "No shiny data");
             }
         }
@@ -1173,19 +1169,53 @@ namespace ZAShinyWarper
         private void InitializeShinyContextMenu()
         {
             shinyContextMenu = new ContextMenuStrip();
-            var clearItem = new ToolStripMenuItem("Clear from Stash");
+
+            var clearItem = new ToolStripMenuItem("Clear from Stash")
+            {
+                Name = "ClearOne"
+            };
             clearItem.Click += ClearShinyFromStash;
             shinyContextMenu.Items.Add(clearItem);
 
-            var clearAllItems = new ToolStripMenuItem("Clear ALL from Stash");
+            var clearAllItems = new ToolStripMenuItem("Clear ALL from Stash")
+            {
+                Name = "ClearAll"
+            };
             clearAllItems.Click += ClearStash;
             shinyContextMenu.Items.Add(clearAllItems);
 
-            // Attach the context menu to all picture boxes
-            foreach (var pb in StashList)
+            var refreshCache = new ToolStripMenuItem("Refresh")
             {
+                Name = "Refresh"
+            };
+            refreshCache.Click += RefreshStash;
+            shinyContextMenu.Items.Add(refreshCache);
+
+            shinyContextMenu.Opening += ShinyContextMenuItems;
+
+            foreach (var pb in StashList)
                 pb.ContextMenuStrip = shinyContextMenu;
-            }
+        }
+
+        private void ShinyContextMenuItems(object? sender, EventArgs e)
+        {
+            if (sender is not ContextMenuStrip menu)
+                return;
+
+            if (menu.SourceControl is not PictureBox pb)
+                return;
+
+            int index = StashList.IndexOf(pb);
+            bool hasShiny = index >= 0 && index < shinyHunter.StashedShinies.Count;
+
+            if (menu.Items["ClearOne"] is ToolStripMenuItem clearOne)
+                clearOne.Visible = hasShiny;
+
+            if (menu.Items["ClearAll"] is ToolStripMenuItem clearAll)
+                clearAll.Visible = hasShiny;
+
+            if (menu.Items["Refresh"] is ToolStripMenuItem refresh)
+                refresh.Visible = true; // always visible
         }
 
         private void ClearShinyFromStash(object? sender, EventArgs e)
@@ -1288,6 +1318,33 @@ namespace ZAShinyWarper
                             MessageBoxIcon.Error);
                     }
                 }
+            }
+        }
+
+        private void RefreshStash(object? sender, EventArgs e)
+        {
+            // Get the picture box that was right-clicked
+            if (sender is not ToolStripMenuItem menuItem)
+                return;
+            if (menuItem.Owner is not ContextMenuStrip contextMenu)
+                return;
+            if (contextMenu.SourceControl is not PictureBox)
+                return;
+            try
+            {
+                // Reload the stashed shinies
+                shinyHunter.LoadStashedShinies(bot);
+                // Update the display
+                DisplayStashedShinies();
+                MessageBox.Show(ActiveForm, $"Shiny stash has been refreshed.", "Success",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error refreshing shiny stash: {ex.Message}", "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
         }
 
@@ -1583,8 +1640,8 @@ namespace ZAShinyWarper
                                 MessageBox.Show($"The following Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}has been found.\r\n\r\n{pk}\r\n",
                                     "Found something new!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                             });
-                        }                        
-                    }                        
+                        }
+                    }
 
                     // Check every minute for new stashed shinies
                     await Task.Delay(60000, token);
