@@ -405,8 +405,8 @@ namespace ZAShinyWarper.Hunting
                         Debug.WriteLine($"Time drifted from {targetTime} to {currentTime}, correcting...");
                     }
 
-                    // Check every 5 minutes to match the cycles
-                    await Task.Delay(300000, token);
+                    // Check every 3 minutes to match the cycles
+                    await Task.Delay(180000, token);
                 }
                 catch (OperationCanceledException)
                 {
