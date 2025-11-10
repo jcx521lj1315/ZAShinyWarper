@@ -5,6 +5,7 @@
         public string IPAddress { get; set; } = "192.168.0.1";
         public List<WebhookData> Webhooks { get; set; } = [];
         public List<Vector3> Positions { get; set; } = [];
+        public decimal WarpDistance { get; set; } = 3;
         public List<int> SpeciesIndices { get; set; } = [];
         public decimal SpawnCheckTime { get; set; } = 2000;
         public decimal CamMove { get; set; } = 16000;

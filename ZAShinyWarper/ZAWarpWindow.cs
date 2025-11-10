@@ -23,11 +23,13 @@ namespace ZAShinyWarper
 
         private readonly ShinyHunter<PA9> shinyHunter = new();
         private readonly List<PictureBox> StashList;
-        private readonly HttpClient httpClient = new();
+        private static readonly HttpClient httpClient = new();
         private readonly WarpProgressForm warpProgress = new();
         private ContextMenuStrip? shinyContextMenu;
 
         public ComboBox[] CBIVs = default!;
+        private readonly List<string> filterSpecies = [];
+        private readonly Dictionary<string, bool> speciesCheckStates = [];
 
         private CancellationTokenSource? _monitoringCts = null;
 
@@ -67,8 +69,16 @@ namespace ZAShinyWarper
 
             // Species
             cBSpecies.Items.Add("Any");
+            filterSpecies.Add("Any");
+
             foreach (var item in ZAZukan.PokedexNumbersZA)
-                cBSpecies.Items.Add($"{item.Value:D3} - {item.Key}");
+            {
+                string speciesEntry = $"{item.Value:D3} - {item.Key}";
+                cBSpecies.Items.Add(speciesEntry);
+                filterSpecies.Add(speciesEntry);
+                speciesCheckStates[speciesEntry] = false;
+            }
+            speciesCheckStates["Any"] = true;
             cBSpecies.SetItemChecked(0, true);
 
             // IVs
@@ -582,7 +592,7 @@ namespace ZAShinyWarper
 
                 var bytes = xb.Concat(yb).Concat(zb);
 
-                bot.WriteBytes(bytes.ToArray(), ramOffset, RWMethod.Absolute);
+                bot.WriteBytes([.. bytes], ramOffset, RWMethod.Absolute);
             }
             catch
             {
@@ -637,13 +647,28 @@ namespace ZAShinyWarper
 
         private void OnClickReset(object sender, EventArgs e)
         {
-            // Uncheck all items
+            // Make sure search box is cleared
+            tbSpeciesSearch.Text = string.Empty;
+
+            // Uncheck all items in the dictionary
+            foreach (var key in speciesCheckStates.Keys.ToList())
+            {
+                speciesCheckStates[key] = false;
+            }
+
+            // Check "Any" in the dictionary
+            speciesCheckStates["Any"] = true;
+
+            // Update the visible CheckedListBox
             for (int i = 0; i < cBSpecies.Items.Count; i++)
             {
                 cBSpecies.SetItemChecked(i, false);
             }
-            // Check "Any" (index 0)
-            cBSpecies.SetItemChecked(0, true);
+            // Check "Any" (should be index 0 after search is cleared)
+            if (cBSpecies.Items.Count > 0 && cBSpecies.Items[0].ToString() == "Any")
+            {
+                cBSpecies.SetItemChecked(0, true);
+            }
             SaveConfig();
         }
 
@@ -716,7 +741,8 @@ namespace ZAShinyWarper
             try
             {
                 programConfig.IPAddress = tB_IP.Text;
-                programConfig.Positions = [.. positions];
+                programConfig.Positions = positions;
+                programConfig.WarpDistance = nUDDistance.Value;
                 programConfig.SpawnCheckTime = nUDCheckTime.Value;
                 programConfig.CamMove = nUDCamMove.Value;
                 programConfig.SaveFreq = nUDSaveFreq.Value;
@@ -733,14 +759,13 @@ namespace ZAShinyWarper
                 programConfig.ScaleMin = nUDScaleMin.Value;
                 programConfig.ScaleMax = nUDScaleMax.Value;
 
-                // Species
                 programConfig.SpeciesIndices.Clear();
-                for (int i = 0; i < cBSpecies.Items.Count; i++)
+                for (int i = 0; i < filterSpecies.Count; i++)
                 {
-                    if (cBSpecies.GetItemChecked(i))
+                    string item = filterSpecies[i];
+                    if (speciesCheckStates.TryGetValue(item, out bool value) && value)
                         programConfig.SpeciesIndices.Add(i);
                 }
-
 
                 var json = JsonSerializer.Serialize(programConfig, jsonOptions);
                 File.WriteAllText(Config, json);
@@ -771,20 +796,31 @@ namespace ZAShinyWarper
 
                 programConfig = config;
 
-                // Load all filter settings
-                for (int i = 0; i < cBSpecies.Items.Count; i++)
+                // Clear all states first
+                foreach (var key in speciesCheckStates.Keys.ToList())
                 {
-                    cBSpecies.SetItemChecked(i, false);
+                    speciesCheckStates[key] = false;
                 }
 
+                // Load saved indices into dictionary
                 foreach (var idx in programConfig.SpeciesIndices)
                 {
-                    if (idx < cBSpecies.Items.Count)
-                        cBSpecies.SetItemChecked(idx, true);
+                    if (idx < filterSpecies.Count)
+                    {
+                        speciesCheckStates[filterSpecies[idx]] = true;
+                    }
+                }
+
+                // Apply to visible items
+                for (int i = 0; i < cBSpecies.Items.Count; i++)
+                {
+                    string item = cBSpecies.Items[i].ToString()!;
+                    cBSpecies.SetItemChecked(i, speciesCheckStates.ContainsKey(item) && speciesCheckStates[item]);
                 }
 
                 tB_IP.Text = programConfig.IPAddress;
-                positions = [.. programConfig.Positions];
+                positions = programConfig.Positions;
+                nUDDistance.Value = programConfig.WarpDistance;
                 cBWhenShinyFound.SelectedIndex = programConfig.WhenShinyFound;
                 cBForcedWeather.SelectedIndex = programConfig.ForcedWeather;
                 cBForcedTimeOfDay.SelectedIndex = programConfig.ForcedTimeOfDay;
@@ -878,8 +914,11 @@ namespace ZAShinyWarper
             {
                 shinyHunter.UnlockTime();
                 shinyHunter.UnlockWeather();
-                bot.SendBytes(Encoding.ASCII.GetBytes("setStick RIGHT 0 0\r\n"));
-                bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
+                if (bot?.Connected == true)
+                {
+                    bot.SendBytes(Encoding.ASCII.GetBytes("setStick RIGHT 0 0\r\n"));
+                    bot.SendBytes(Encoding.ASCII.GetBytes("detachController\r\n"));
+                }
             }
             catch
             {
@@ -1090,32 +1129,83 @@ namespace ZAShinyWarper
 
         private void OnSpeciesSelectedIndexChange(object sender, EventArgs e)
         {
-            // Select "Any" if none are selected
-            bool anyChecked = false;
-            for (int i = 0; i < cBSpecies.Items.Count; i++)
+            // Update the dictionary when items are checked/unchecked
+            if (cBSpecies.SelectedIndex >= 0 && cBSpecies.SelectedIndex < cBSpecies.Items.Count)
             {
-                if (cBSpecies.GetItemChecked(i))
+                string item = cBSpecies.Items[cBSpecies.SelectedIndex].ToString()!;
+                speciesCheckStates[item] = cBSpecies.GetItemChecked(cBSpecies.SelectedIndex);
+
+                // If anything other than "Any" is checked, uncheck "Any"
+                if (item != "Any" && cBSpecies.GetItemChecked(cBSpecies.SelectedIndex))
                 {
-                    anyChecked = true;
-                    break;
+                    if (cBSpecies.Items.Contains("Any"))
+                    {
+                        int anyIndex = cBSpecies.Items.IndexOf("Any");
+                        cBSpecies.SetItemChecked(anyIndex, false);
+                    }
+                    speciesCheckStates["Any"] = false;
                 }
+                // If "Any" is checked, uncheck everything else
+                else if (item == "Any" && cBSpecies.GetItemChecked(cBSpecies.SelectedIndex))
+                {
+                    foreach (var key in speciesCheckStates.Keys.ToList())
+                    {
+                        if (key != "Any")
+                            speciesCheckStates[key] = false;
+                    }
+                    for (int i = 1; i < cBSpecies.Items.Count; i++)
+                    {
+                        cBSpecies.SetItemChecked(i, false);
+                    }
+                }
+
+                // Clear search box after checking/unchecking
+                tbSpeciesSearch.Text = string.Empty;
             }
+
+            // Select "Any" if nothing is checked
+            bool anyChecked = speciesCheckStates.Any(kvp => kvp.Value);
             if (!anyChecked)
             {
-                cBSpecies.SetItemChecked(0, true);
-                return;
-            }
-            // Clear everything else if "Any" is selected
-            if (cBSpecies.SelectedIndex == 0)
-            {
-                for (int i = 1; i < cBSpecies.Items.Count; i++)
+                speciesCheckStates["Any"] = true;
+                if (cBSpecies.Items.Contains("Any"))
                 {
-                    cBSpecies.SetItemChecked(i, false);
+                    int anyIndex = cBSpecies.Items.IndexOf("Any");
+                    cBSpecies.SetItemChecked(anyIndex, true);
                 }
             }
-            else // Clear "Any" if anything else is selected
+        }
+
+        private void OnTextChangedSpeciesSearch(object sender, EventArgs e)
+        {
+            // Save current checked states
+            for (int i = 0; i < cBSpecies.Items.Count; i++)
             {
-                cBSpecies.SetItemChecked(0, false);
+                string item = cBSpecies.Items[i].ToString()!;
+                speciesCheckStates[item] = cBSpecies.GetItemChecked(i);
+            }
+
+            string searchText = tbSpeciesSearch.Text.ToLower();
+            cBSpecies.Items.Clear();
+
+            // Filter and add items keeping current checked state
+            foreach (var item in filterSpecies)
+            {
+                // Just the name part (after " - ") for searching
+                string searchablePart = item;
+                if (item.Contains(" - "))
+                {
+                    searchablePart = item.Split(" - ")[1];
+                }
+
+                if (searchablePart.StartsWith(searchText, StringComparison.CurrentCultureIgnoreCase) || item == "Any")
+                {
+                    int index = cBSpecies.Items.Add(item);
+                    if (speciesCheckStates.TryGetValue(item, out bool value))
+                    {
+                        cBSpecies.SetItemChecked(index, value);
+                    }
+                }
             }
         }
 
@@ -1653,7 +1743,7 @@ namespace ZAShinyWarper
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"Error monitoring stash: {ex.Message}");
-                    await Task.Delay(1000, token);
+                    await Task.Delay(1000, token).ConfigureAwait(false);
                 }
             }
         }

@@ -360,7 +360,7 @@ namespace ZAShinyWarper.Hunting
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"Error monitoring weather: {ex.Message}");
-                    await Task.Delay(1000, token);
+                    await Task.Delay(1000, token).ConfigureAwait(false);
                 }
             }
         }
@@ -415,7 +415,7 @@ namespace ZAShinyWarper.Hunting
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"Error monitoring time: {ex.Message}");
-                    await Task.Delay(1000, token);
+                    await Task.Delay(1000, token).ConfigureAwait(false);
                 }
             }
         }

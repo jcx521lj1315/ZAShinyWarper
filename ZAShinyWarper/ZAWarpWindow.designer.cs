@@ -55,6 +55,7 @@ namespace ZAShinyWarper
             lblThanks = new Label();
             btnConnectUSB = new Button();
             gBShinyHunt = new GroupBox();
+            tbSpeciesSearch = new TextBox();
             cBForcedTimeOfDay = new ComboBox();
             btnRefreshTime = new Button();
             cBForcedWeather = new ComboBox();
@@ -314,6 +315,7 @@ namespace ZAShinyWarper
             nUDDistance.Size = new Size(76, 23);
             nUDDistance.TabIndex = 12;
             nUDDistance.Value = new decimal(new int[] { 3, 0, 0, 0 });
+            nUDDistance.ValueChanged += OnConfigurationChange;
             // 
             // btnLeft
             // 
@@ -382,6 +384,8 @@ namespace ZAShinyWarper
             // 
             // gBShinyHunt
             // 
+            gBShinyHunt.Controls.Add(cBSpecies);
+            gBShinyHunt.Controls.Add(tbSpeciesSearch);
             gBShinyHunt.Controls.Add(cBForcedTimeOfDay);
             gBShinyHunt.Controls.Add(btnRefreshTime);
             gBShinyHunt.Controls.Add(cBForcedWeather);
@@ -414,7 +418,6 @@ namespace ZAShinyWarper
             gBShinyHunt.Controls.Add(cBIVDef);
             gBShinyHunt.Controls.Add(cBIVAtk);
             gBShinyHunt.Controls.Add(cBIVHP);
-            gBShinyHunt.Controls.Add(cBSpecies);
             gBShinyHunt.Controls.Add(btnResetSpecies);
             gBShinyHunt.Controls.Add(lblSpecies);
             gBShinyHunt.Controls.Add(cBWhenShinyFound);
@@ -428,6 +431,15 @@ namespace ZAShinyWarper
             gBShinyHunt.TabIndex = 6;
             gBShinyHunt.TabStop = false;
             gBShinyHunt.Text = "Shiny Hunting";
+            // 
+            // tbSpeciesSearch
+            // 
+            tbSpeciesSearch.Location = new Point(70, 273);
+            tbSpeciesSearch.Name = "tbSpeciesSearch";
+            tbSpeciesSearch.PlaceholderText = "Search";
+            tbSpeciesSearch.Size = new Size(125, 23);
+            tbSpeciesSearch.TabIndex = 40;
+            tbSpeciesSearch.TextChanged += OnTextChangedSpeciesSearch;
             // 
             // cBForcedTimeOfDay
             // 
@@ -761,11 +773,11 @@ namespace ZAShinyWarper
             // 
             // btnResetSpecies
             // 
-            btnResetSpecies.Location = new Point(158, 272);
+            btnResetSpecies.Location = new Point(193, 272);
             btnResetSpecies.Name = "btnResetSpecies";
-            btnResetSpecies.Size = new Size(60, 25);
+            btnResetSpecies.Size = new Size(25, 25);
             btnResetSpecies.TabIndex = 29;
-            btnResetSpecies.Text = "Reset";
+            btnResetSpecies.Text = "🗘";
             btnResetSpecies.UseVisualStyleBackColor = true;
             btnResetSpecies.Click += OnClickReset;
             // 
@@ -774,9 +786,9 @@ namespace ZAShinyWarper
             lblSpecies.AutoSize = true;
             lblSpecies.Location = new Point(13, 277);
             lblSpecies.Name = "lblSpecies";
-            lblSpecies.Size = new Size(46, 15);
+            lblSpecies.Size = new Size(49, 15);
             lblSpecies.TabIndex = 5;
-            lblSpecies.Text = "Species";
+            lblSpecies.Text = "Species:";
             // 
             // cBWhenShinyFound
             // 
@@ -1135,6 +1147,7 @@ namespace ZAShinyWarper
         private Button btnRefreshWeather;
         private Button btnRefreshTime;
         private Button btnMonitoring;
+        private TextBox tbSpeciesSearch;
     }
 }
 
