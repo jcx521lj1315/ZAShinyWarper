@@ -7,10 +7,10 @@ namespace ZAShinyWarper.Hunting
 {
     public enum ShinyFoundAction
     {
-        StopOnFound,
-        StopAtFullCache,
-        CacheAndContinue,
-        ClearAndContinue
+        发现闪光停止,
+        缓存满时停止,
+        缓存并继续,
+        清除并继续       
     }
 
     public enum IVType
@@ -21,24 +21,24 @@ namespace ZAShinyWarper.Hunting
     }
     public enum Weather
     {
-        None = -1,
-        Clear = 0,
-        Overcast = 1,
-        Rain = 2,
-        StrongWinds = 3,
-        Windy = 5,
-        MildWinds = 7,
-        Fog = 8,
-        IntenseSun = 9,
+        无 = -1,
+        晴天 = 0,
+        阴天 = 1,
+        雨天 = 2,
+        乱流 = 3,
+        强风 = 5,
+        微风 = 7,
+        雾天 = 8,
+        烈日 = 9,
     }
 
     public enum TimeOfDay
     {
-        None = -1, // Don't change
-        Morning = 14400,   // Beginning of Morning
-        Midday = 43200, // Mid-day
-        Night = 72000,  // Beggining of night
-        LateNight = 86400 // Mid-Night
+        无 = -1, // Don't change
+        早晨 = 14400,   // Beginning of Morning
+        中午 = 43200, // Mid-day
+        夜晚 = 72000,  // Beggining of night
+        深夜 = 86400, // Mid-Night
     }
 
     public class ShinyHunter<T> where T : PKM, new()
@@ -115,12 +115,12 @@ namespace ZAShinyWarper.Hunting
             {
                 var weatherAddress = bot.FollowMainPointer(weatherPointer); // Get address
 
-                if (weather == Weather.None && forced)
+                if (weather == Weather.无 && forced)
                 {
                     UnlockWeather();
                     return;
                 }
-                else if (weather != Weather.None)
+                else if (weather != Weather.无)
                 {
                     var weatherBytes = BitConverter.GetBytes((uint)weather); // Convert to bytes
                     bot.WriteBytes(weatherBytes, weatherAddress, RWMethod.Absolute); // Write
@@ -141,12 +141,12 @@ namespace ZAShinyWarper.Hunting
                 var timeAddress = bot.FollowMainPointer(timePointer);
                 timeAddress += 0x30;
 
-                if (time == TimeOfDay.None && forced)
+                if (time == TimeOfDay.无 && forced)
                 {
                     UnlockTime();
                     return;
                 }
-                else if (time != TimeOfDay.None)
+                else if (time != TimeOfDay.无)
                 {
                     // Cast enum to float
                     var timeBytes = BitConverter.GetBytes((float)time); // Convert to bytes

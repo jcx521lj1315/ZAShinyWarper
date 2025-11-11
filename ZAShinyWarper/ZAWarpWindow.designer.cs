@@ -161,7 +161,7 @@ namespace ZAShinyWarper
             btnConnect.Name = "btnConnect";
             btnConnect.Size = new Size(148, 30);
             btnConnect.TabIndex = 2;
-            btnConnect.Text = "Connect";
+            btnConnect.Text = "连接";
             btnConnect.UseVisualStyleBackColor = true;
             btnConnect.Click += OnClickConnect;
             // 
@@ -190,7 +190,7 @@ namespace ZAShinyWarper
             gBControls.Size = new Size(303, 381);
             gBControls.TabIndex = 3;
             gBControls.TabStop = false;
-            gBControls.Text = "Editing";
+            gBControls.Text = "编辑";
             // 
             // btnIndexDown
             // 
@@ -228,7 +228,7 @@ namespace ZAShinyWarper
             btnExportCoords.Name = "btnExportCoords";
             btnExportCoords.Size = new Size(137, 27);
             btnExportCoords.TabIndex = 20;
-            btnExportCoords.Text = "Export";
+            btnExportCoords.Text = "导出坐标";
             btnExportCoords.UseVisualStyleBackColor = true;
             btnExportCoords.Click += OnClickExport;
             // 
@@ -239,7 +239,7 @@ namespace ZAShinyWarper
             btnImportCoords.Name = "btnImportCoords";
             btnImportCoords.Size = new Size(135, 27);
             btnImportCoords.TabIndex = 19;
-            btnImportCoords.Text = "Import";
+            btnImportCoords.Text = "导入坐标";
             btnImportCoords.UseVisualStyleBackColor = true;
             btnImportCoords.Click += OnClickImport;
             // 
@@ -262,7 +262,7 @@ namespace ZAShinyWarper
             btnDelete.Name = "btnDelete";
             btnDelete.Size = new Size(88, 27);
             btnDelete.TabIndex = 17;
-            btnDelete.Text = "Delete Pos";
+            btnDelete.Text = "删除位置";
             btnDelete.UseVisualStyleBackColor = true;
             btnDelete.Click += OnClickDelete;
             // 
@@ -273,7 +273,7 @@ namespace ZAShinyWarper
             btnRestore.Name = "btnRestore";
             btnRestore.Size = new Size(88, 27);
             btnRestore.TabIndex = 16;
-            btnRestore.Text = "Restore Pos";
+            btnRestore.Text = "恢复位置";
             btnRestore.UseVisualStyleBackColor = true;
             btnRestore.Click += OnClickRestore;
             // 
@@ -284,7 +284,7 @@ namespace ZAShinyWarper
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(88, 27);
             btnSave.TabIndex = 15;
-            btnSave.Text = "Save Pos";
+            btnSave.Text = "保存位置";
             btnSave.UseVisualStyleBackColor = true;
             btnSave.Click += OnClickSave;
             // 
@@ -305,7 +305,7 @@ namespace ZAShinyWarper
             lblFreeWarp.Name = "lblFreeWarp";
             lblFreeWarp.Size = new Size(61, 15);
             lblFreeWarp.TabIndex = 13;
-            lblFreeWarp.Text = "Free warp:";
+            lblFreeWarp.Text = "传送:";
             // 
             // nUDDistance
             // 
@@ -368,7 +368,7 @@ namespace ZAShinyWarper
             lblThanks.Name = "lblThanks";
             lblThanks.Size = new Size(316, 37);
             lblThanks.TabIndex = 4;
-            lblThanks.Text = "Many thanks to Kurt for PKHeX, Anubis for the shiny stash research, and Berichan for creating the original program";
+            lblThanks.Text = "非常感谢Kurt开发PKHeX, 感谢Anubis在闪光物品库方面的研究,以及感谢Berichan编写了原始程序";
             lblThanks.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // btnConnectUSB
@@ -378,7 +378,7 @@ namespace ZAShinyWarper
             btnConnectUSB.Name = "btnConnectUSB";
             btnConnectUSB.Size = new Size(148, 30);
             btnConnectUSB.TabIndex = 5;
-            btnConnectUSB.Text = "ConnectUSB";
+            btnConnectUSB.Text = "USB连接";
             btnConnectUSB.UseVisualStyleBackColor = true;
             btnConnectUSB.Click += OnClickConnectUSB;
             // 
@@ -430,13 +430,13 @@ namespace ZAShinyWarper
             gBShinyHunt.Size = new Size(230, 569);
             gBShinyHunt.TabIndex = 6;
             gBShinyHunt.TabStop = false;
-            gBShinyHunt.Text = "Shiny Hunting";
+            gBShinyHunt.Text = "闪光捕捉";
             // 
             // tbSpeciesSearch
             // 
             tbSpeciesSearch.Location = new Point(70, 273);
             tbSpeciesSearch.Name = "tbSpeciesSearch";
-            tbSpeciesSearch.PlaceholderText = "Search";
+            tbSpeciesSearch.PlaceholderText = "重置";
             tbSpeciesSearch.Size = new Size(125, 23);
             tbSpeciesSearch.TabIndex = 40;
             tbSpeciesSearch.TextChanged += OnTextChangedSpeciesSearch;
@@ -494,7 +494,7 @@ namespace ZAShinyWarper
             lblTimeOfDay.Name = "lblTimeOfDay";
             lblTimeOfDay.Size = new Size(108, 15);
             lblTimeOfDay.TabIndex = 36;
-            lblTimeOfDay.Text = "Forced Time of day";
+            lblTimeOfDay.Text = "强制时间设定";
             // 
             // lblWeather
             // 
@@ -504,7 +504,7 @@ namespace ZAShinyWarper
             lblWeather.Name = "lblWeather";
             lblWeather.Size = new Size(90, 15);
             lblWeather.TabIndex = 34;
-            lblWeather.Text = "Forced Weather";
+            lblWeather.Text = "强制天气设定";
             // 
             // lblScale
             // 
@@ -513,7 +513,7 @@ namespace ZAShinyWarper
             lblScale.Name = "lblScale";
             lblScale.Size = new Size(37, 15);
             lblScale.TabIndex = 33;
-            lblScale.Text = "Scale:";
+            lblScale.Text = "大小:";
             // 
             // cBIsAlpha
             // 
@@ -544,7 +544,7 @@ namespace ZAShinyWarper
             btnResetFilters.Name = "btnResetFilters";
             btnResetFilters.Size = new Size(204, 27);
             btnResetFilters.TabIndex = 30;
-            btnResetFilters.Text = "Reset Filters";
+            btnResetFilters.Text = "重置筛选";
             btnResetFilters.UseVisualStyleBackColor = true;
             btnResetFilters.Click += OnClickResetFilters;
             // 
@@ -565,7 +565,7 @@ namespace ZAShinyWarper
             lblSaveFreq.Name = "lblSaveFreq";
             lblSaveFreq.Size = new Size(90, 15);
             lblSaveFreq.TabIndex = 27;
-            lblSaveFreq.Text = "Save frequency:";
+            lblSaveFreq.Text = "保存频率:";
             // 
             // nUDCamMove
             // 
@@ -587,7 +587,7 @@ namespace ZAShinyWarper
             lblCam.RightToLeft = RightToLeft.No;
             lblCam.Size = new Size(192, 15);
             lblCam.TabIndex = 25;
-            lblCam.Text = "Cam move speed (-32000 to 32000)";
+            lblCam.Text = "镜头移动速度 (-32000 to 32000)";
             // 
             // nUDCheckTime
             // 
@@ -607,7 +607,7 @@ namespace ZAShinyWarper
             label3.Name = "label3";
             label3.Size = new Size(133, 15);
             label3.TabIndex = 23;
-            label3.Text = "Spawn check time (ms):";
+            label3.Text = "刷新时间检测 (毫秒):";
             // 
             // nUDScaleMin
             // 
@@ -635,7 +635,7 @@ namespace ZAShinyWarper
             lblScaleMin.Name = "lblScaleMin";
             lblScaleMin.Size = new Size(28, 15);
             lblScaleMin.TabIndex = 21;
-            lblScaleMin.Text = "Min";
+            lblScaleMin.Text = "最小";
             // 
             // lblScaleMax
             // 
@@ -644,7 +644,7 @@ namespace ZAShinyWarper
             lblScaleMax.Name = "lblScaleMax";
             lblScaleMax.Size = new Size(30, 15);
             lblScaleMax.TabIndex = 21;
-            lblScaleMax.Text = "Max";
+            lblScaleMax.Text = "最大";
             // 
             // lblIVSpe
             // 
@@ -653,7 +653,7 @@ namespace ZAShinyWarper
             lblIVSpe.Name = "lblIVSpe";
             lblIVSpe.Size = new Size(26, 15);
             lblIVSpe.TabIndex = 19;
-            lblIVSpe.Text = "Spe";
+            lblIVSpe.Text = "速度";
             // 
             // lblIVSpD
             // 
@@ -662,7 +662,7 @@ namespace ZAShinyWarper
             lblIVSpD.Name = "lblIVSpD";
             lblIVSpD.Size = new Size(28, 15);
             lblIVSpD.TabIndex = 18;
-            lblIVSpD.Text = "SpD";
+            lblIVSpD.Text = "特防";
             // 
             // lblIVSpA
             // 
@@ -671,7 +671,7 @@ namespace ZAShinyWarper
             lblIVSpA.Name = "lblIVSpA";
             lblIVSpA.Size = new Size(28, 15);
             lblIVSpA.TabIndex = 17;
-            lblIVSpA.Text = "SpA";
+            lblIVSpA.Text = "特攻";
             // 
             // cBIVSpe
             // 
@@ -709,7 +709,7 @@ namespace ZAShinyWarper
             lblIVDef.Name = "lblIVDef";
             lblIVDef.Size = new Size(25, 15);
             lblIVDef.TabIndex = 13;
-            lblIVDef.Text = "Def";
+            lblIVDef.Text = "防御";
             // 
             // lblIVAtk
             // 
@@ -718,7 +718,7 @@ namespace ZAShinyWarper
             lblIVAtk.Name = "lblIVAtk";
             lblIVAtk.Size = new Size(25, 15);
             lblIVAtk.TabIndex = 12;
-            lblIVAtk.Text = "Atk";
+            lblIVAtk.Text = "攻击";
             // 
             // lblIVHP
             // 
@@ -727,7 +727,7 @@ namespace ZAShinyWarper
             lblIVHP.Name = "lblIVHP";
             lblIVHP.Size = new Size(23, 15);
             lblIVHP.TabIndex = 11;
-            lblIVHP.Text = "HP";
+            lblIVHP.Text = "生命";
             // 
             // cBIVDef
             // 
@@ -788,7 +788,7 @@ namespace ZAShinyWarper
             lblSpecies.Name = "lblSpecies";
             lblSpecies.Size = new Size(49, 15);
             lblSpecies.TabIndex = 5;
-            lblSpecies.Text = "Species:";
+            lblSpecies.Text = "种类:";
             // 
             // cBWhenShinyFound
             // 
@@ -809,7 +809,7 @@ namespace ZAShinyWarper
             lblShinyFound.Name = "lblShinyFound";
             lblShinyFound.Size = new Size(107, 15);
             lblShinyFound.TabIndex = 2;
-            lblShinyFound.Text = "When shiny found:";
+            lblShinyFound.Text = "当发现闪光时:";
             // 
             // btnWarp
             // 
@@ -819,7 +819,7 @@ namespace ZAShinyWarper
             btnWarp.Name = "btnWarp";
             btnWarp.Size = new Size(148, 30);
             btnWarp.TabIndex = 1;
-            btnWarp.Text = "Begin Warping";
+            btnWarp.Text = "开始传送";
             btnWarp.UseVisualStyleBackColor = true;
             btnWarp.Click += OnClickWarp;
             // 
@@ -842,7 +842,7 @@ namespace ZAShinyWarper
             gBStashedShiny.Size = new Size(226, 569);
             gBStashedShiny.TabIndex = 7;
             gBStashedShiny.TabStop = false;
-            gBStashedShiny.Text = "Stashed Shinies";
+            gBStashedShiny.Text = "存储闪光";
             // 
             // StashedShiny1
             // 
@@ -862,7 +862,7 @@ namespace ZAShinyWarper
             btnExportSets.Name = "btnExportSets";
             btnExportSets.Size = new Size(198, 27);
             btnExportSets.TabIndex = 14;
-            btnExportSets.Text = "Export Sets";
+            btnExportSets.Text = "导出";
             btnExportSets.UseVisualStyleBackColor = true;
             btnExportSets.Click += OnClickExportSets;
             // 
@@ -972,7 +972,7 @@ namespace ZAShinyWarper
             btnScreenOn.Name = "btnScreenOn";
             btnScreenOn.Size = new Size(148, 30);
             btnScreenOn.TabIndex = 8;
-            btnScreenOn.Text = "Screen On";
+            btnScreenOn.Text = "打开屏幕";
             btnScreenOn.UseVisualStyleBackColor = true;
             btnScreenOn.Click += OnClickScreenOn;
             // 
@@ -983,7 +983,7 @@ namespace ZAShinyWarper
             btnScreenOff.Name = "btnScreenOff";
             btnScreenOff.Size = new Size(148, 30);
             btnScreenOff.TabIndex = 9;
-            btnScreenOff.Text = "Screen Off";
+            btnScreenOff.Text = "关闭屏幕";
             btnScreenOff.UseVisualStyleBackColor = true;
             btnScreenOff.Click += OnClickScreenOff;
             // 
@@ -1000,7 +1000,7 @@ namespace ZAShinyWarper
             btnWebhookSettings.Name = "btnWebhookSettings";
             btnWebhookSettings.Size = new Size(148, 30);
             btnWebhookSettings.TabIndex = 15;
-            btnWebhookSettings.Text = "Webhook Settings";
+            btnWebhookSettings.Text = "Webhook设置";
             btnWebhookSettings.UseVisualStyleBackColor = true;
             btnWebhookSettings.Click += OnClickWebhookSettings;
             // 
@@ -1012,7 +1012,7 @@ namespace ZAShinyWarper
             btnMonitoring.Name = "btnMonitoring";
             btnMonitoring.Size = new Size(148, 30);
             btnMonitoring.TabIndex = 16;
-            btnMonitoring.Text = "Begin Monitoring";
+            btnMonitoring.Text = "开始监控";
             btnMonitoring.UseVisualStyleBackColor = true;
             btnMonitoring.Click += OnClickMonitoring;
             // 
@@ -1040,7 +1040,7 @@ namespace ZAShinyWarper
             MaximizeBox = false;
             Name = "ZAWarpWindow";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "Z-A Shiny Warper";
+            Text = "Z-A Shiny Warper（汉化间辞）";
             Load += LoadDefaults;
             gBControls.ResumeLayout(false);
             gBControls.PerformLayout();

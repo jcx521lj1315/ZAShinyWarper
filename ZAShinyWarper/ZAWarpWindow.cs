@@ -1009,21 +1009,21 @@ namespace ZAShinyWarper
                         var shouldSendEmbed = true;
                         var stopMessage = string.Empty;
 
-                        if (matchesFilter && action == ShinyFoundAction.StopOnFound) // Found what we wanted. Stop warping, go catch it
+                        if (matchesFilter && action == ShinyFoundAction.发现闪光停止) // Found what we wanted. Stop warping, go catch it
                         {
                             shouldStop = true;
                             stopMessage = $"A Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}matching the filter has been found after {currentWarps} attempts!\r\nStopping warping.\r\n\r\n{pk}\r\n";
                         }
-                        else if (matchesFilter && action == ShinyFoundAction.ClearAndContinue) // Found what we wanted, keep going
+                        else if (matchesFilter && action == ShinyFoundAction.清除并继续) // Found what we wanted, keep going
                         {
                             MessageBox.Show($"We Found A Match after {currentWarps} attempts! Let's keep going to find more!\r\n\r\n{pk}\r\n", "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
-                        else if (matchesFilter && cacheIsFull && action != ShinyFoundAction.StopOnFound) // Found what we wanted in this run and the cache is full
+                        else if (matchesFilter && cacheIsFull && action != ShinyFoundAction.发现闪光停止) // Found what we wanted in this run and the cache is full
                         {
                             shouldStop = true;
                             stopMessage = $"A Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}matching the filter has been found after {currentWarps} attempts and your stash is now full!\r\nStopping warping.\r\n\r\n{pk}\r\n";
                         }
-                        else if (!matchesFilter && action == ShinyFoundAction.ClearAndContinue) // Does not match filter, clear it out
+                        else if (!matchesFilter && action == ShinyFoundAction.缓存并继续) // Does not match filter, clear it out
                         {
                             shouldSendEmbed = false;
                             int index = shinyHunter.StashedShinies.IndexOf(pk);
@@ -1034,14 +1034,14 @@ namespace ZAShinyWarper
                         }
                         else if (!matchesFilter && cacheIsFull) // Does not match filter but the cache is full
                         {
-                            if (action == ShinyFoundAction.StopAtFullCache) // Maybe something worth catching not being filtered for
+                            if (action == ShinyFoundAction.缓存满时停止) // Maybe something worth catching not being filtered for
                             {
                                 shouldStop = true;
                                 stopMessage = matchingShinyFound
                                     ? "A shiny matching your filter was found earlier in the hunt.\r\nYour shiny cache is now full!\r\nStopping warping to preserve filtered match."
                                     : "No shiny matching your filter was found.\r\nYour shiny cache is now full!\r\nStopping warping.";
                             }
-                            else if (action == ShinyFoundAction.CacheAndContinue && matchingShinyFound) // Most recent does not match filter but the cache is now full and a filter match was found at an earlier point
+                            else if (action == ShinyFoundAction.缓存并继续 && matchingShinyFound) // Most recent does not match filter but the cache is now full and a filter match was found at an earlier point
                             {
                                 shouldStop = true;
                                 stopMessage = "A shiny matching your filter was found earlier in the hunt.\r\nYour shiny cache is now full!\r\nStopping to preserve your matching shiny.";
