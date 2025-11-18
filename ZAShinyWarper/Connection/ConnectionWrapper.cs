@@ -23,7 +23,6 @@ public class ConnectionWrapper(SwitchConnectionConfig Config)
     private readonly long[] basePointer = [0x4201D20, 0x00];
     private readonly long[] arrayStartPointer = [0x4201D20, 0x350, 0x00];
     private readonly long[] invalidStartPointer = [0x4201D20, 0x358, 0x00];
-    private ulong PlayerCoordinatesOffset;
 
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     public event EventHandler<string>? ConnectionError;
@@ -37,7 +36,6 @@ public class ConnectionWrapper(SwitchConnectionConfig Config)
         {
             Connection.Connect();
             IsConnected = true;
-            PlayerCoordinatesOffset = await GetPlayerCoordinatesOffset(token);
             await Connection.SendAsync(DetachController(CRLF), token).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -69,11 +67,6 @@ public class ConnectionWrapper(SwitchConnectionConfig Config)
     public async Task ToggleScreen(bool state, CancellationToken token)
     {
         await Connection.SendAsync(SetScreen(state ? ScreenState.On : ScreenState.Off), token);
-    }
-
-    public async Task<ulong> GetPlayerCoordinatesOffset(CancellationToken token)
-    {
-        return await Connection.PointerAll(jumpsPos, token).ConfigureAwait(false);
     }
 
     public async Task<ulong> GetArrayStartOffset(CancellationToken token)
@@ -288,6 +281,29 @@ public class ConnectionWrapper(SwitchConnectionConfig Config)
         try
         {
             await Connection.SendAsync(Click(X, IsWifi), token).ConfigureAwait(false);
+        }
+        finally
+        {
+            _connectionLock.Release();
+        }
+    }
+
+    public async Task MarkSpawn(CancellationToken token)
+    {
+        await _connectionLock.WaitAsync(token);
+        try
+        {
+            await Connection.SendAsync(Click(PLUS, IsWifi), token).ConfigureAwait(false);
+            await Task.Delay(450, token).ConfigureAwait(false);
+            await Connection.SendAsync(Click(LSTICK, IsWifi), token).ConfigureAwait(false);
+            await Task.Delay(350, token).ConfigureAwait(false);
+            await Connection.SendAsync(Click(A, IsWifi), token).ConfigureAwait(false);
+            await Task.Delay(350, token).ConfigureAwait(false);
+            await Connection.SendAsync(Click(PLUS, IsWifi), token).ConfigureAwait(false);
+            await Task.Delay(350, token).ConfigureAwait(false);
+            await Connection.SendAsync(Hold(A, IsWifi), token).ConfigureAwait(false);
+            await Task.Delay(350, token).ConfigureAwait(false);
+            await Connection.SendAsync(Release(A, IsWifi), token).ConfigureAwait(false);
         }
         finally
         {

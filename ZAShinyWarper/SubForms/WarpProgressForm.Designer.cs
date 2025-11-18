@@ -28,28 +28,44 @@
         /// </summary>
         private void InitializeComponent()
         {
-            lblWarping = new System.Windows.Forms.Label();
+            lblWarping = new Label();
+            btn_Cancel = new Button();
             SuspendLayout();
             // 
             // lblWarping
             // 
-            lblWarping.Location = new System.Drawing.Point(12, 9);
+            lblWarping.Location = new Point(12, 9);
             lblWarping.Name = "lblWarping";
-            lblWarping.Size = new System.Drawing.Size(308, 89);
+            lblWarping.Size = new Size(308, 89);
             lblWarping.TabIndex = 0;
             lblWarping.Text = "Warping...";
-            lblWarping.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            lblWarping.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // btn_Cancel
+            // 
+            btn_Cancel.Dock = DockStyle.Bottom;
+            btn_Cancel.FlatStyle = FlatStyle.Flat;
+            btn_Cancel.Font = new Font("Segoe UI", 7.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            btn_Cancel.Location = new Point(0, 86);
+            btn_Cancel.Margin = new Padding(0);
+            btn_Cancel.Name = "btn_Cancel";
+            btn_Cancel.Size = new Size(332, 21);
+            btn_Cancel.TabIndex = 1;
+            btn_Cancel.Text = "Cancel";
+            btn_Cancel.UseVisualStyleBackColor = true;
+            btn_Cancel.Click += OnClickCancelButton;
             // 
             // WarpProgressForm
             // 
-            AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ClientSize = new System.Drawing.Size(332, 107);
+            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
+            ClientSize = new Size(332, 107);
             ControlBox = false;
+            Controls.Add(btn_Cancel);
             Controls.Add(lblWarping);
-            FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            FormBorderStyle = FormBorderStyle.FixedSingle;
             Name = "WarpProgressForm";
-            StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            StartPosition = FormStartPosition.CenterParent;
             TopMost = true;
             ResumeLayout(false);
         }
@@ -57,5 +73,6 @@
         #endregion
 
         private System.Windows.Forms.Label lblWarping;
+        private Button btn_Cancel;
     }
 }

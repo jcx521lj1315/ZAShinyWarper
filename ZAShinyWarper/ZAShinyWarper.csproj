@@ -15,9 +15,16 @@
     <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\SpawnerLocations\LysandreLabs.json" />
+    <EmbeddedResource Include="Resources\SpawnerLocations\Main.json" />
+    <EmbeddedResource Include="Resources\SpawnerLocations\Sewers.json" />
+  </ItemGroup>
   
   <ItemGroup>
     <PackageReference Include="LibUsbDotNet" Version="2.2.29" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="NLog" Version="5.4.0" />
     <PackageReference Include="PKHeX.Core" Version="25.10.27" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />

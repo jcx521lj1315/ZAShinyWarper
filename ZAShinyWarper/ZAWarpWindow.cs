@@ -47,6 +47,7 @@ namespace ZAShinyWarper
             InitializeComponent();
             SetupListBox();
             CultureInfo.CurrentCulture = new CultureInfo("en-US", false);
+            warpProgress.CancelRequested += (s, e) => warping = false;
 
             FormClosing += OnFormClosing;
 
@@ -491,11 +492,14 @@ namespace ZAShinyWarper
             if (!toSend.HasValue)
                 return;
 
+            await TeleportPlayer(toSend.Value);
+        }
+
+        private async Task TeleportPlayer(Vector3 toSend, bool spawner = false)
+        {
             warping = true;
             SetWarpingEnableState(false);
-
-            await ConnectionWrapper.SetPlayerPosition(toSend.Value.X, toSend.Value.Y, toSend.Value.Z, GlobalToken);
-
+            await ConnectionWrapper.SetPlayerPosition(toSend.X, toSend.Y, toSend.Z, GlobalToken);
             Invoke(() =>
             {
                 CenterFormOnParent(warpProgress);
@@ -506,10 +510,25 @@ namespace ZAShinyWarper
             for (int i = 0; i < 15; ++i)
             {
                 if (!warping)
+                {
+                    Invoke(() =>
+                    {
+                        warpProgress.Hide();
+                        warpProgress.SetText("Warping...");
+                    });
+                    SetWarpingEnableState(true);
                     return;
+                }
+
+                if (spawner)
+                {
+                    await ConnectionWrapper.MarkSpawn(GlobalToken).ConfigureAwait(false);
+                    spawner = false;
+                }
 
                 int currentAttempt = i + 1;
                 var pos = await ConnectionWrapper.GetPlayerPositionAsync(GlobalToken).ConfigureAwait(false);
+
                 if (pos.X == 0 || pos.Z == 0)
                 {
                     Invoke(() =>
@@ -523,7 +542,7 @@ namespace ZAShinyWarper
                     return;
                 }
 
-                if (pos.Y >= toSend.Value.Y - 0.02f && pos.Y <= toSend.Value.Y + 0.02f)
+                if (Math.Abs(pos.Y - toSend.Y) <= 0.2f)
                     break;
 
                 if (i == 0)
@@ -531,11 +550,11 @@ namespace ZAShinyWarper
                 else
                     Invoke(() => warpProgress.SetText($"Reattempting to Warp ({currentAttempt}/15) Please wait."));
 
-                await ConnectionWrapper.SetPlayerPosition(toSend.Value.X, toSend.Value.Y, toSend.Value.Z, GlobalToken);
+                await ConnectionWrapper.SetPlayerPosition(toSend.X, toSend.Y, toSend.Z, GlobalToken);
                 await Task.Delay(1100).ConfigureAwait(false);
 
                 var position = await ConnectionWrapper.GetPlayerPositionAsync(GlobalToken).ConfigureAwait(false);
-                if (i == 14 && position.Y != toSend.Value.Y)
+                if (i == 14 && position.Y != toSend.Y)
                 {
                     Invoke(() => warpProgress.SetText("Warp failure. Please retry"));
                     await Task.Delay(1000).ConfigureAwait(false);
@@ -547,7 +566,6 @@ namespace ZAShinyWarper
                 warpProgress.Hide();
                 warpProgress.SetText("Warping...");
             });
-
             warping = false;
             SetWarpingEnableState(true);
         }
@@ -1388,6 +1406,14 @@ namespace ZAShinyWarper
                 refreshCache.Click += RefreshStash;
                 shinyContextMenu.Items.Add(refreshCache);
 
+                var warp = new ToolStripMenuItem("Warp To")
+                {
+                    Name = "Warp"
+                };
+                warp.Click += TeleportToSpawner;
+                shinyContextMenu.Items.Add(warp);
+
+
                 shinyContextMenu.Opening += ShinyContextMenuItems;
 
                 foreach (var pb in StashList)
@@ -1554,6 +1580,68 @@ namespace ZAShinyWarper
                     MessageBox.Show($"Error refreshing shiny stash: {ex.Message}", "Error",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
+                });
+            }
+        }
+
+        private async void TeleportToSpawner(object? sender, EventArgs e)
+        {
+            if (sender is not ToolStripMenuItem menuItem)
+                return;
+            if (menuItem.Owner is not ContextMenuStrip contextMenu)
+                return;
+            if (contextMenu.SourceControl is not PictureBox pb)
+                return;
+            if (warping)
+                return;
+
+            int index = StashList.IndexOf(pb);
+            var shiny = shinyHunter.StashedShinies[index];
+
+            if (LocationParser.MainSpawnerCoordinates != null && LocationParser.MainSpawnerCoordinates.TryGetValue($"{shiny.LocationHash:X16}", out var location))
+            {
+                var result = MessageBox.Show($"You must be on the *Main Map* to warp to this Shiny's location{Environment.NewLine}Click OK to proceed", "Map Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                if (result == DialogResult.OK)
+                {
+                    var adjusted = new Vector3 { X = location.X + .05f, Y = location.Y + .5f, Z = location.Z + .05f };
+                await TeleportPlayer(adjusted, true);
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else if (LocationParser.SewersSpawnerCoordinates != null && LocationParser.SewersSpawnerCoordinates.TryGetValue($"{shiny.LocationHash:X16}", out location))
+            {
+                var result = MessageBox.Show($"You must be in *The Sewers* to warp to this Shiny's location{Environment.NewLine}Click OK to proceed", "Map Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                if (result == DialogResult.OK)
+                {
+                    var adjusted = new Vector3 { X = location.X , Y = location.Y + .5f, Z = location.Z };
+                    await TeleportPlayer(adjusted, true);
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else if (LocationParser.LysandreSpawnerCoordinates != null && LocationParser.LysandreSpawnerCoordinates.TryGetValue($"{shiny.LocationHash:X16}", out location))
+            {
+                var result = MessageBox.Show($"You must be in *Lysandre Labs* to warp to this Shiny's location{Environment.NewLine}Click OK to proceed", "Map Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                if (result == DialogResult.OK)
+                {
+                    var adjusted = new Vector3 { X = location.X, Y = location.Y + 5f, Z = location.Z };
+                    await TeleportPlayer(adjusted, true);
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                BeginInvoke(() =>
+                {
+                    MessageBox.Show($"Unable to determine spawn location", "Unable to find!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 });
             }
         }
