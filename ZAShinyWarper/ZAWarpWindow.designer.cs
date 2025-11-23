@@ -42,6 +42,7 @@ namespace ZAShinyWarper
             lblThanks = new Label();
             btnConnectUSB = new Button();
             gBShinyHunt = new GroupBox();
+            cBSpecies = new CheckedListBox();
             tbSpeciesSearch = new TextBox();
             cBForcedTimeOfDay = new ComboBox();
             btnRefreshTime = new Button();
@@ -75,7 +76,6 @@ namespace ZAShinyWarper
             cBIVDef = new ComboBox();
             cBIVAtk = new ComboBox();
             cBIVHP = new ComboBox();
-            cBSpecies = new CheckedListBox();
             btnResetSpecies = new Button();
             lblSpecies = new Label();
             cBWhenShinyFound = new ComboBox();
@@ -98,6 +98,8 @@ namespace ZAShinyWarper
             ShinyInfo = new ToolTip(components);
             btnWebhookSettings = new Button();
             btnMonitoring = new Button();
+            warpTimer = new System.Windows.Forms.Timer(components);
+            warperIcon = new NotifyIcon(components);
             gBControls.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)nUDDistance).BeginInit();
             gBShinyHunt.SuspendLayout();
@@ -417,6 +419,17 @@ namespace ZAShinyWarper
             gBShinyHunt.TabStop = false;
             gBShinyHunt.Text = "Shiny Hunting";
             // 
+            // cBSpecies
+            // 
+            cBSpecies.CheckOnClick = true;
+            cBSpecies.FormattingEnabled = true;
+            cBSpecies.IntegralHeight = false;
+            cBSpecies.Location = new Point(13, 295);
+            cBSpecies.Name = "cBSpecies";
+            cBSpecies.Size = new Size(204, 94);
+            cBSpecies.TabIndex = 6;
+            cBSpecies.SelectedIndexChanged += OnSpeciesSelectedIndexChange;
+            // 
             // tbSpeciesSearch
             // 
             tbSpeciesSearch.Location = new Point(70, 273);
@@ -732,17 +745,6 @@ namespace ZAShinyWarper
             cBIVHP.Size = new Size(65, 23);
             cBIVHP.TabIndex = 8;
             // 
-            // cBSpecies
-            // 
-            cBSpecies.CheckOnClick = true;
-            cBSpecies.FormattingEnabled = true;
-            cBSpecies.IntegralHeight = false;
-            cBSpecies.Location = new Point(13, 295);
-            cBSpecies.Name = "cBSpecies";
-            cBSpecies.Size = new Size(204, 94);
-            cBSpecies.TabIndex = 6;
-            cBSpecies.SelectedIndexChanged += OnSpeciesSelectedIndexChange;
-            // 
             // btnResetSpecies
             // 
             btnResetSpecies.Location = new Point(193, 272);
@@ -987,6 +989,13 @@ namespace ZAShinyWarper
             btnMonitoring.UseVisualStyleBackColor = true;
             btnMonitoring.Click += OnClickMonitoring;
             // 
+            // warperIcon
+            // 
+            warperIcon.Icon = Properties.Resources.icon;
+            warperIcon.Text = "Z-A Shiny Warper";
+            warperIcon.Visible = false;
+            warperIcon.DoubleClick += OnClickTrayIcon;
+            // 
             // ZAWarpWindow
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -1006,7 +1015,7 @@ namespace ZAShinyWarper
             Controls.Add(lbl_IP);
             Controls.Add(btnWarp);
             FormBorderStyle = FormBorderStyle.FixedSingle;
-            Icon = (Icon)resources.GetObject("$this.Icon");
+            Icon = Properties.Resources.icon;
             Margin = new Padding(4, 3, 4, 3);
             MaximizeBox = false;
             Name = "ZAWarpWindow";
@@ -1119,6 +1128,8 @@ namespace ZAShinyWarper
         private Button btnRefreshTime;
         private Button btnMonitoring;
         private TextBox tbSpeciesSearch;
+        private System.Windows.Forms.Timer warpTimer;
+        private NotifyIcon warperIcon;
     }
 }
 

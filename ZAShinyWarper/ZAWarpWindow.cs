@@ -13,6 +13,7 @@ namespace ZAShinyWarper
 {
     public partial class ZAWarpWindow : Form
     {
+        private string WarperTitle = "Z-A Shiny Warper";
         private List<Vector3> positions = [];
         private const string Config = "config.json";
         private static readonly JsonSerializerOptions jsonOptions = new() { WriteIndented = true };
@@ -41,6 +42,7 @@ namespace ZAShinyWarper
         private bool monitoring = false;
         private bool warping = false;
         private int currentWarps = 0;
+        private DateTime startTime;
 
         public ZAWarpWindow()
         {
@@ -61,6 +63,26 @@ namespace ZAShinyWarper
                 Port = programConfig.Protocol is SwitchProtocol.WiFi ? 6000 : programConfig.UsbPort,
                 Protocol = programConfig.Protocol,
             };
+
+            warpTimer.Interval = 100;
+            warpTimer.Tick += WarpTimerTick;
+        }
+
+        private void WarpTimerTick(object? sender, EventArgs e)
+        {
+            TimeSpan elapsed = DateTime.Now - startTime;
+            Text = $"{WarperTitle} - Warping For: {elapsed:hh\\:mm\\:ss}";
+            warperIcon.Text = $"Warping For: {elapsed:hh\\:mm\\:ss}";
+            warperIcon.Visible = true;
+        }
+
+        private void OnClickTrayIcon(object sender, EventArgs e)
+        {
+            Activate();
+            BringToFront();
+            Focus();
+            Show();
+            WindowState = FormWindowState.Normal;
         }
 
         protected override void Dispose(bool disposing)
@@ -1038,6 +1060,10 @@ namespace ZAShinyWarper
         {
             if (warping)
             {
+                warpTimer.Stop();
+                Text = $"{WarperTitle}";
+                warperIcon.Text = Text; 
+                warperIcon.Visible = false;
                 warping = false;
                 SetFiltersEnableState(true);
                 Invoke(() => btnWarp.Text = "Start Warping");
@@ -1051,6 +1077,8 @@ namespace ZAShinyWarper
                 return;
             }
 
+            startTime = DateTime.Now;
+            warpTimer.Start();
             var filter = GetFilter();
             int warpInterval = 0;
             int camSpeed = 0;
