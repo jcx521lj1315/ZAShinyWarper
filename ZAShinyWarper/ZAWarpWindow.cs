@@ -1356,7 +1356,13 @@ namespace ZAShinyWarper
         private void OnMouseHover(object sender, EventArgs e)
         {
             PictureBox pb = (PictureBox)sender;
-            Invoke(() => pb.BorderStyle = BorderStyle.FixedSingle);
+            Invoke(() =>
+            {
+                pb.BorderStyle = BorderStyle.FixedSingle;
+                ShinyInfo.Hide(pb);
+                ShinyInfo.Active = false;
+                ShinyInfo.Active = true;
+            });
 
             int index = StashList.IndexOf(pb);
             if (index >= 0 && index < shinyHunter.StashedShinies.Count)
