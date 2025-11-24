@@ -76,6 +76,17 @@ namespace ZAShinyWarper
             warperIcon.Visible = true;
         }
 
+        private void ResetTimer()
+        {
+            Invoke(() =>
+            {
+                warpTimer.Stop();
+                Text = $"{WarperTitle}";
+                warperIcon.Text = Text;
+                warperIcon.Visible = false;
+            });
+        }
+
         private void OnClickTrayIcon(object sender, EventArgs e)
         {
             Activate();
@@ -238,6 +249,7 @@ namespace ZAShinyWarper
                             if (warping)
                             {
                                 warping = false;
+                                ResetTimer();
                                 SetFiltersEnableState(true);
                                 Invoke(() => btnWarp.Text = "Start Warping");
                             }
@@ -264,7 +276,7 @@ namespace ZAShinyWarper
                         _ = Task.Run(async () =>
                         {
                             try
-                            {
+                            {                                
                                 Invoke(() => ConnectionConfig.IP = tB_IP.Text);
                                 ConnectionWrapper = new(ConnectionConfig);
 
@@ -313,6 +325,7 @@ namespace ZAShinyWarper
                             if (warping)
                             {
                                 warping = false;
+                                ResetTimer();
                                 SetFiltersEnableState(true);
                                 Invoke(() => btnWarp.Text = "Start Warping");
                             }
@@ -349,6 +362,7 @@ namespace ZAShinyWarper
                             };
 
                             await ConnectionWrapper.Connect(GlobalToken);
+                            shinyHunter.Initialize(ConnectionWrapper);
                             await shinyHunter.LoadStashedShinies(GlobalToken);
                             DisplayStashedShinies();
                             DisplayStashedMessageBox(false);
@@ -1060,10 +1074,7 @@ namespace ZAShinyWarper
         {
             if (warping)
             {
-                warpTimer.Stop();
-                Text = $"{WarperTitle}";
-                warperIcon.Text = Text; 
-                warperIcon.Visible = false;
+                ResetTimer();
                 warping = false;
                 SetFiltersEnableState(true);
                 Invoke(() => btnWarp.Text = "Start Warping");
