@@ -134,6 +134,9 @@ namespace ZAShinyWarper
         private void LoadDefaults(object sender, EventArgs e)
         {
             // Load enums into comboboxes
+            // Connection Protocol
+            foreach (var item in Enum.GetValues<SwitchProtocol>())
+                cBProtocol.Items.Add(item);
             // WhenShinyFound
             foreach (var item in Enum.GetValues<ShinyFoundAction>())
                 cBWhenShinyFound.Items.Add(item);
@@ -254,7 +257,13 @@ namespace ZAShinyWarper
                                 Invoke(() => btnWarp.Text = "Start Warping");
                             }
 
-                            SetUIEnableState(true, false);
+                            Invoke(() =>
+                            {
+                                tB_IP.Enabled = true;
+                                cBProtocol.Enabled = true;
+                                tB_Port.Enabled = cBProtocol.SelectedIndex == 1;
+                            });
+                            SetUIEnableState(false);
                             await CleanUpBotAsync();
                             await ConnectionWrapper.Disconnect(GlobalToken).ConfigureAwait(false);
                             ResetSprites();
@@ -276,22 +285,27 @@ namespace ZAShinyWarper
                         _ = Task.Run(async () =>
                         {
                             try
-                            {                                
-                                Invoke(() => ConnectionConfig.IP = tB_IP.Text);
+                            {
+                                Invoke(() =>
+                                {
+                                    ConnectionConfig.IP = tB_IP.Text;
+                                    ConnectionConfig.Port = int.Parse(tB_Port.Text);
+                                    ConnectionConfig.Protocol = (SwitchProtocol)cBProtocol.SelectedItem!;
+
+                                    btnConnect.Enabled = false;
+                                    tB_IP.Enabled = false;
+                                    tB_Port.Enabled = false;
+                                    cBProtocol.Enabled = false;
+                                });
                                 ConnectionWrapper = new(ConnectionConfig);
 
-                                ConnectionWrapper.ConnectionError += (sender, error) =>
-                                {
-                                    BeginInvoke(() => MessageBox.Show(error, "Connection Error",
-                                        MessageBoxButtons.OK, MessageBoxIcon.Error));
-                                };
-
                                 await ConnectionWrapper.Connect(GlobalToken);
+                                Invoke(() => btnConnect.Enabled = true);
                                 shinyHunter.Initialize(ConnectionWrapper);
                                 await shinyHunter.LoadStashedShinies(GlobalToken);
                                 DisplayStashedShinies();
                                 DisplayStashedMessageBox(true);
-                                SetUIEnableState(true, true);
+                                SetUIEnableState(true);
                                 await CleanUpBotAsync();
                             }
                             catch (OperationCanceledException)
@@ -301,6 +315,13 @@ namespace ZAShinyWarper
                             catch (Exception ex)
                             {
                                 BeginInvoke(() => MessageBox.Show(ex.Message));
+                                Invoke(() =>
+                                {
+                                    tB_IP.Enabled = true;
+                                    cBProtocol.Enabled = true;
+                                    tB_Port.Enabled = cBProtocol.SelectedIndex == 1;
+                                    btnConnect.Enabled = true;
+                                });
                             }
                         }, GlobalToken);
                     }
@@ -308,76 +329,6 @@ namespace ZAShinyWarper
                     {
                         BeginInvoke(() => MessageBox.Show(ex.Message));
                     }
-                }
-            }
-        }
-
-        private void OnClickConnectUSB(object sender, EventArgs e)
-        {
-            lock (ConnectionLock)
-            {
-                if (ConnectionWrapper != null && ConnectionWrapper.Connected)
-                {
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            if (warping)
-                            {
-                                warping = false;
-                                ResetTimer();
-                                SetFiltersEnableState(true);
-                                Invoke(() => btnWarp.Text = "Start Warping");
-                            }
-
-                            SetUIEnableState(false, false);
-                            await CleanUpBotAsync();
-                            await ConnectionWrapper.Disconnect(GlobalToken).ConfigureAwait(false);
-                            ResetSprites();
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            // Expected during shutdown
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"Error during USB disconnect: {ex.Message}");
-                        }
-                    }, GlobalToken);
-                }
-                else
-                {
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            ConnectionConfig.Port = programConfig.UsbPort;
-                            ConnectionConfig.Protocol = SwitchProtocol.USB;
-                            ConnectionWrapper = new(ConnectionConfig);
-
-                            ConnectionWrapper.ConnectionError += (sender, error) =>
-                            {
-                                BeginInvoke(() => MessageBox.Show(error, "Connection Error",
-                                    MessageBoxButtons.OK, MessageBoxIcon.Error));
-                            };
-
-                            await ConnectionWrapper.Connect(GlobalToken);
-                            shinyHunter.Initialize(ConnectionWrapper);
-                            await shinyHunter.LoadStashedShinies(GlobalToken);
-                            DisplayStashedShinies();
-                            DisplayStashedMessageBox(false);
-                            SetUIEnableState(false, true);
-                            await CleanUpBotAsync();
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            // Expected during shutdown
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show(ex.Message);
-                        }
-                    }, GlobalToken);
                 }
             }
         }
@@ -862,11 +813,32 @@ namespace ZAShinyWarper
             }
         }
 
+        private void OnProtocolChanged(object? sender, EventArgs e)
+        {
+            bool isWiFi = (SwitchProtocol)cBProtocol.SelectedIndex == SwitchProtocol.WiFi;
+
+            if (isWiFi)
+            {
+                tB_Port.Text = "6000";
+                tB_Port.Enabled = false;
+                programConfig.Protocol = SwitchProtocol.WiFi;
+            }
+            else
+            {
+                tB_Port.Text = programConfig.UsbPort.ToString();
+                tB_Port.Enabled = true;
+                programConfig.Protocol = SwitchProtocol.USB;
+            }
+        }
+
         private void SaveConfig()
         {
             try
             {
                 programConfig.IPAddress = tB_IP.Text;
+                if (programConfig.Protocol is SwitchProtocol.USB)
+                    programConfig.UsbPort = int.Parse(tB_Port.Text);
+                programConfig.Protocol = (SwitchProtocol)cBProtocol.SelectedItem!;
                 programConfig.Positions = positions;
                 programConfig.WarpDistance = nUDDistance.Value;
                 programConfig.SpawnCheckTime = nUDCheckTime.Value;
@@ -945,6 +917,8 @@ namespace ZAShinyWarper
                 }
 
                 tB_IP.Text = programConfig.IPAddress;
+                tB_Port.Text = programConfig.Protocol is SwitchProtocol.WiFi ? "6000" : programConfig.UsbPort.ToString();
+                cBProtocol.SelectedItem = programConfig.Protocol;
                 positions = programConfig.Positions;
                 nUDDistance.Value = programConfig.WarpDistance;
                 cBWhenShinyFound.SelectedIndex = programConfig.WhenShinyFound;
@@ -969,7 +943,7 @@ namespace ZAShinyWarper
             }
         }
 
-        private void SetUIEnableState(bool wifi, bool enabled)
+        private void SetUIEnableState(bool enabled)
         {
             Invoke(() =>
             {
@@ -983,19 +957,7 @@ namespace ZAShinyWarper
                 btnResetFilters.Enabled = enabled;
                 btnExportSets.Enabled = enabled;
                 btnMonitoring.Enabled = enabled;
-
-                if (wifi)
-                {
-                    btnConnect.Text = enabled ? "Disconnect" : "Connect";
-                    btnConnect.Enabled = true;
-                    btnConnectUSB.Enabled = !enabled;
-                }
-                else
-                {
-                    btnConnectUSB.Text = enabled ? "Disconnect USB" : "Connect USB";
-                    btnConnectUSB.Enabled = true;
-                    btnConnect.Enabled = !enabled;
-                }
+                btnConnect.Text = enabled ? "Disconnect" : "Connect";
             });
         }
 

@@ -25,7 +25,6 @@ public class ConnectionWrapper(SwitchConnectionConfig Config)
     private readonly long[] invalidStartPointer = [0x4203D20, 0x358, 0x00];
 
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
-    public event EventHandler<string>? ConnectionError;
 
     public async Task Connect(CancellationToken token)
     {
@@ -41,7 +40,6 @@ public class ConnectionWrapper(SwitchConnectionConfig Config)
         catch (Exception ex)
         {
             IsConnected = false;
-            ConnectionError?.Invoke(this, $"Failed to connect: {ex.Message}");
             throw;
         }
     }
@@ -60,7 +58,6 @@ public class ConnectionWrapper(SwitchConnectionConfig Config)
         catch (Exception ex)
         {
             IsConnected = false;
-            ConnectionError?.Invoke(this, $"Error during disconnect: {ex.Message}");
         }
     }
 

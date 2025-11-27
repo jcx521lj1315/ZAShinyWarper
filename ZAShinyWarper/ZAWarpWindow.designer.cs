@@ -19,7 +19,6 @@ namespace ZAShinyWarper
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ZAWarpWindow));
             lbl_IP = new Label();
             tB_IP = new TextBox();
             btnConnect = new Button();
@@ -40,7 +39,6 @@ namespace ZAShinyWarper
             btnBack = new Button();
             btnForw = new Button();
             lblThanks = new Label();
-            btnConnectUSB = new Button();
             gBShinyHunt = new GroupBox();
             cBSpecies = new CheckedListBox();
             tbSpeciesSearch = new TextBox();
@@ -100,6 +98,10 @@ namespace ZAShinyWarper
             btnMonitoring = new Button();
             warpTimer = new System.Windows.Forms.Timer(components);
             warperIcon = new NotifyIcon(components);
+            lblPort = new Label();
+            tB_Port = new TextBox();
+            cBProtocol = new ComboBox();
+            lblProtocol = new Label();
             gBControls.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)nUDDistance).BeginInit();
             gBShinyHunt.SuspendLayout();
@@ -125,7 +127,7 @@ namespace ZAShinyWarper
             // lbl_IP
             // 
             lbl_IP.AutoSize = true;
-            lbl_IP.Location = new Point(12, 31);
+            lbl_IP.Location = new Point(13, 28);
             lbl_IP.Margin = new Padding(4, 0, 4, 0);
             lbl_IP.Name = "lbl_IP";
             lbl_IP.Size = new Size(20, 15);
@@ -134,11 +136,11 @@ namespace ZAShinyWarper
             // 
             // tB_IP
             // 
-            tB_IP.Location = new Point(32, 27);
+            tB_IP.Location = new Point(31, 25);
             tB_IP.Margin = new Padding(4, 3, 4, 3);
             tB_IP.MaxLength = 15;
             tB_IP.Name = "tB_IP";
-            tB_IP.Size = new Size(131, 23);
+            tB_IP.Size = new Size(84, 23);
             tB_IP.TabIndex = 1;
             tB_IP.Text = "192.168.0.1";
             // 
@@ -357,17 +359,6 @@ namespace ZAShinyWarper
             lblThanks.TabIndex = 4;
             lblThanks.Text = "Many thanks to Kurt for PKHeX, Anubis for the shiny stash research, and Berichan for creating the original program";
             lblThanks.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // btnConnectUSB
-            // 
-            btnConnectUSB.Location = new Point(170, 60);
-            btnConnectUSB.Margin = new Padding(4, 3, 4, 3);
-            btnConnectUSB.Name = "btnConnectUSB";
-            btnConnectUSB.Size = new Size(148, 30);
-            btnConnectUSB.TabIndex = 5;
-            btnConnectUSB.Text = "ConnectUSB";
-            btnConnectUSB.UseVisualStyleBackColor = true;
-            btnConnectUSB.Click += OnClickConnectUSB;
             // 
             // gBShinyHunt
             // 
@@ -969,7 +960,7 @@ namespace ZAShinyWarper
             // btnWebhookSettings
             // 
             btnWebhookSettings.Enabled = false;
-            btnWebhookSettings.Location = new Point(170, 24);
+            btnWebhookSettings.Location = new Point(169, 60);
             btnWebhookSettings.Name = "btnWebhookSettings";
             btnWebhookSettings.Size = new Size(148, 30);
             btnWebhookSettings.TabIndex = 15;
@@ -993,21 +984,62 @@ namespace ZAShinyWarper
             // 
             warperIcon.Icon = Properties.Resources.icon;
             warperIcon.Text = "Z-A Shiny Warper";
-            warperIcon.Visible = false;
             warperIcon.DoubleClick += OnClickTrayIcon;
+            // 
+            // lblPort
+            // 
+            lblPort.AutoSize = true;
+            lblPort.Location = new Point(123, 28);
+            lblPort.Margin = new Padding(4, 0, 4, 0);
+            lblPort.Name = "lblPort";
+            lblPort.Size = new Size(32, 15);
+            lblPort.TabIndex = 17;
+            lblPort.Text = "Port:";
+            // 
+            // tB_Port
+            // 
+            tB_Port.Location = new Point(152, 25);
+            tB_Port.Margin = new Padding(4, 3, 4, 3);
+            tB_Port.MaxLength = 15;
+            tB_Port.Name = "tB_Port";
+            tB_Port.Size = new Size(49, 23);
+            tB_Port.TabIndex = 18;
+            tB_Port.Text = "6000";
+            // 
+            // cBProtocol
+            // 
+            cBProtocol.FormattingEnabled = true;
+            cBProtocol.Location = new Point(262, 25);
+            cBProtocol.Name = "cBProtocol";
+            cBProtocol.Size = new Size(55, 23);
+            cBProtocol.TabIndex = 19;
+            cBProtocol.SelectedIndexChanged += OnProtocolChanged;
+            // 
+            // lblProtocol
+            // 
+            lblProtocol.AutoSize = true;
+            lblProtocol.Location = new Point(209, 28);
+            lblProtocol.Margin = new Padding(4, 0, 4, 0);
+            lblProtocol.Name = "lblProtocol";
+            lblProtocol.Size = new Size(55, 15);
+            lblProtocol.TabIndex = 20;
+            lblProtocol.Text = "Protocol:";
             // 
             // ZAWarpWindow
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(802, 591);
+            Controls.Add(cBProtocol);
+            Controls.Add(lblProtocol);
+            Controls.Add(tB_Port);
+            Controls.Add(lblPort);
             Controls.Add(btnMonitoring);
             Controls.Add(btnWebhookSettings);
             Controls.Add(btnScreenOff);
             Controls.Add(btnScreenOn);
             Controls.Add(gBStashedShiny);
             Controls.Add(gBShinyHunt);
-            Controls.Add(btnConnectUSB);
             Controls.Add(lblThanks);
             Controls.Add(gBControls);
             Controls.Add(btnConnect);
@@ -1055,7 +1087,6 @@ namespace ZAShinyWarper
         private System.Windows.Forms.Button btnConnect;
         private System.Windows.Forms.GroupBox gBControls;
         private System.Windows.Forms.Label lblThanks;
-        private System.Windows.Forms.Button btnConnectUSB;
         private System.Windows.Forms.Button btnLeft;
         private System.Windows.Forms.Button btnRight;
         private System.Windows.Forms.Button btnBack;
@@ -1130,6 +1161,10 @@ namespace ZAShinyWarper
         private TextBox tbSpeciesSearch;
         private System.Windows.Forms.Timer warpTimer;
         private NotifyIcon warperIcon;
+        private Label lblPort;
+        private TextBox tB_Port;
+        private ComboBox cBProtocol;
+        private Label lblProtocol;
     }
 }
 
