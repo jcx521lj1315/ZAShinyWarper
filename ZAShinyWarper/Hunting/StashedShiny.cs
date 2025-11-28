@@ -26,7 +26,16 @@ namespace ZAShinyWarper.Hunting
                 return "Rolls: N/A";
         }
 
-        public override string ToString() => $"Location hash: {LocationHash:X16}\r\n{GetRollsInfo()}\r\n" + ShowdownParsing.GetShowdownText(PKM) + "\r\n";
+        public override string ToString() => $"Location hash: {LocationHash:X16}\r\n{GetRollsInfo()}\r\n" + ShowdownWithScale() + "\r\n";
         public string ToShowdownString() => ShowdownParsing.GetShowdownText(PKM);
+        public string ShowdownWithScale()
+        {  var showdownText = ShowdownParsing.GetShowdownText(PKM);
+            var lines = showdownText.Split('\n');
+            var linesList = lines.ToList();
+            var pk = PKM as PA9;
+            linesList.Insert(4, $"Size: {PokeSizeUtil.GetSizeRating(pk!.Scale)} ({pk.Scale})");
+
+            return string.Join("\n", linesList);
+        }
     }
 }
