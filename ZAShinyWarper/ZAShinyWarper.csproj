@@ -19,7 +19,8 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\SpawnerLocations\LysandreLabs.json" />
     <EmbeddedResource Include="Resources\SpawnerLocations\Main.json" />
-    <EmbeddedResource Include="Resources\SpawnerLocations\Sewers.json" />
+    <EmbeddedResource Include="Resources\SpawnerLocations\CanalSewers.json" />
+    <EmbeddedResource Include="Resources\SpawnerLocations\MainSewers.json" />
   </ItemGroup>
   
   <ItemGroup>

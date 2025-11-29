@@ -8,7 +8,8 @@ public class LocationParser
 {
     public static readonly Dictionary<string, Vector3>? LysandreSpawnerCoordinates = ParseLocationData(GetEmbeddedResource("SpawnerLocations.LysandreLabs.json") ?? "[]");
     public static readonly Dictionary<string, Vector3>? MainSpawnerCoordinates = ParseLocationData(GetEmbeddedResource("SpawnerLocations.Main.json") ?? "[]");
-    public static readonly Dictionary<string, Vector3>? SewersSpawnerCoordinates = ParseLocationData(GetEmbeddedResource("SpawnerLocations.Sewers.json") ?? "[]");
+    public static readonly Dictionary<string, Vector3>? MainSewersSpawnerCoordinates = ParseLocationData(GetEmbeddedResource("SpawnerLocations.MainSewers.json") ?? "[]");
+    public static readonly Dictionary<string, Vector3>? CanalSewersSpawnerCoordinates = ParseLocationData(GetEmbeddedResource("SpawnerLocations.CanalSewers.json") ?? "[]");
 
     private static string? GetEmbeddedResource(string resourceName)
     {

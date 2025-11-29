@@ -1607,7 +1607,7 @@ namespace ZAShinyWarper
 
             if (LocationParser.MainSpawnerCoordinates != null && LocationParser.MainSpawnerCoordinates.TryGetValue($"{shiny.LocationHash:X16}", out var location))
             {
-                var result = MessageBox.Show($"You must be on the *Main Map* to warp to this Shiny's location{Environment.NewLine}Click OK to proceed", "Map Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                var result = MessageBox.Show($"You must be on the \"Lumiose City Overworld\" to warp to this Shiny's location{Environment.NewLine}Click OK to proceed", "Map Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
                 if (result == DialogResult.OK)
                 {
                     var adjusted = new Vector3 { X = location.X + .05f, Y = location.Y + .5f, Z = location.Z + .05f };
@@ -1618,9 +1618,9 @@ namespace ZAShinyWarper
                     return;
                 }
             }
-            else if (LocationParser.SewersSpawnerCoordinates != null && LocationParser.SewersSpawnerCoordinates.TryGetValue($"{shiny.LocationHash:X16}", out location))
+            else if (LocationParser.MainSewersSpawnerCoordinates != null && LocationParser.MainSewersSpawnerCoordinates.TryGetValue($"{shiny.LocationHash:X16}", out location))
             {
-                var result = MessageBox.Show($"You must be in *The Sewers* to warp to this Shiny's location{Environment.NewLine}Click OK to proceed", "Map Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                var result = MessageBox.Show($"You must be in \"The Sewers: Main Access\" to warp to this Shiny's location{Environment.NewLine}Click OK to proceed", "Map Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
                 if (result == DialogResult.OK)
                 {
                     var adjusted = new Vector3 { X = location.X , Y = location.Y + .5f, Z = location.Z };
@@ -1631,9 +1631,22 @@ namespace ZAShinyWarper
                     return;
                 }
             }
+            else if (LocationParser.CanalSewersSpawnerCoordinates != null && LocationParser.CanalSewersSpawnerCoordinates.TryGetValue($"{shiny.LocationHash:X16}", out location))
+            {
+                var result = MessageBox.Show($"You must be in \"The Sewers: Canal Access\" to warp to this Shiny's location{Environment.NewLine}Click OK to proceed", "Map Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                if (result == DialogResult.OK)
+                {
+                    var adjusted = new Vector3 { X = location.X, Y = location.Y + .5f, Z = location.Z };
+                    await TeleportPlayer(adjusted, true);
+                }
+                else
+                {
+                    return;
+                }
+            }
             else if (LocationParser.LysandreSpawnerCoordinates != null && LocationParser.LysandreSpawnerCoordinates.TryGetValue($"{shiny.LocationHash:X16}", out location))
             {
-                var result = MessageBox.Show($"You must be in *Lysandre Labs* to warp to this Shiny's location{Environment.NewLine}Click OK to proceed", "Map Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+                var result = MessageBox.Show($"You must be in \"Lysandre Labs\" to warp to this Shiny's location{Environment.NewLine}Click OK to proceed", "Map Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
                 if (result == DialogResult.OK)
                 {
                     var adjusted = new Vector3 { X = location.X, Y = location.Y + 5f, Z = location.Z };
