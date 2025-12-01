@@ -13,7 +13,7 @@ namespace ZAShinyWarper
 {
     public partial class ZAWarpWindow : Form
     {
-        private string WarperTitle = "Z-A Shiny Warper";
+        private readonly string WarperTitle = "Z-A Shiny Warper";
         private List<Vector3> positions = [];
         private const string Config = "config.json";
         private static readonly JsonSerializerOptions jsonOptions = new() { WriteIndented = true };
@@ -134,9 +134,6 @@ namespace ZAShinyWarper
         private void LoadDefaults(object sender, EventArgs e)
         {
             // Load enums into comboboxes
-            // Connection Protocol
-            foreach (var item in Enum.GetValues<SwitchProtocol>())
-                cBProtocol.Items.Add(item);
             // WhenShinyFound
             foreach (var item in Enum.GetValues<ShinyFoundAction>())
                 cBWhenShinyFound.Items.Add(item);
@@ -256,13 +253,6 @@ namespace ZAShinyWarper
                                 SetFiltersEnableState(true);
                                 Invoke(() => btnWarp.Text = "Start Warping");
                             }
-
-                            Invoke(() =>
-                            {
-                                tB_IP.Enabled = true;
-                                cBProtocol.Enabled = true;
-                                tB_Port.Enabled = cBProtocol.SelectedIndex == 1;
-                            });
                             SetUIEnableState(false);
                             await CleanUpBotAsync();
                             await ConnectionWrapper.Disconnect(GlobalToken).ConfigureAwait(false);
@@ -288,17 +278,13 @@ namespace ZAShinyWarper
                             {
                                 Invoke(() =>
                                 {
-                                    ConnectionConfig.IP = tB_IP.Text;
-                                    ConnectionConfig.Port = int.Parse(tB_Port.Text);
-                                    ConnectionConfig.Protocol = (SwitchProtocol)cBProtocol.SelectedItem!;
+                                    ConnectionConfig.IP = programConfig.IPAddress;
+                                    ConnectionConfig.Port = programConfig.Protocol is SwitchProtocol.USB ? programConfig.UsbPort : 6000;
+                                    ConnectionConfig.Protocol = programConfig.Protocol;
 
                                     btnConnect.Enabled = false;
-                                    tB_IP.Enabled = false;
-                                    tB_Port.Enabled = false;
-                                    cBProtocol.Enabled = false;
                                 });
                                 ConnectionWrapper = new(ConnectionConfig);
-
                                 await ConnectionWrapper.Connect(GlobalToken);
                                 Invoke(() => btnConnect.Enabled = true);
                                 shinyHunter.Initialize(ConnectionWrapper);
@@ -315,13 +301,7 @@ namespace ZAShinyWarper
                             catch (Exception ex)
                             {
                                 BeginInvoke(() => MessageBox.Show(ex.Message));
-                                Invoke(() =>
-                                {
-                                    tB_IP.Enabled = true;
-                                    cBProtocol.Enabled = true;
-                                    tB_Port.Enabled = cBProtocol.SelectedIndex == 1;
-                                    btnConnect.Enabled = true;
-                                });
+                                Invoke(() => btnConnect.Enabled = true);
                             }
                         }, GlobalToken);
                     }
@@ -813,32 +793,10 @@ namespace ZAShinyWarper
             }
         }
 
-        private void OnProtocolChanged(object? sender, EventArgs e)
-        {
-            bool isWiFi = (SwitchProtocol)cBProtocol.SelectedIndex == SwitchProtocol.WiFi;
-
-            if (isWiFi)
-            {
-                tB_Port.Text = "6000";
-                tB_Port.Enabled = false;
-                programConfig.Protocol = SwitchProtocol.WiFi;
-            }
-            else
-            {
-                tB_Port.Text = programConfig.UsbPort.ToString();
-                tB_Port.Enabled = true;
-                programConfig.Protocol = SwitchProtocol.USB;
-            }
-        }
-
         private void SaveConfig()
         {
             try
             {
-                programConfig.IPAddress = tB_IP.Text;
-                if (programConfig.Protocol is SwitchProtocol.USB)
-                    programConfig.UsbPort = int.Parse(tB_Port.Text);
-                programConfig.Protocol = (SwitchProtocol)cBProtocol.SelectedItem!;
                 programConfig.Positions = positions;
                 programConfig.WarpDistance = nUDDistance.Value;
                 programConfig.SpawnCheckTime = nUDCheckTime.Value;
@@ -916,9 +874,6 @@ namespace ZAShinyWarper
                     cBSpecies.SetItemChecked(i, speciesCheckStates.ContainsKey(item) && speciesCheckStates[item]);
                 }
 
-                tB_IP.Text = programConfig.IPAddress;
-                tB_Port.Text = programConfig.Protocol is SwitchProtocol.WiFi ? "6000" : programConfig.UsbPort.ToString();
-                cBProtocol.SelectedItem = programConfig.Protocol;
                 positions = programConfig.Positions;
                 nUDDistance.Value = programConfig.WarpDistance;
                 cBWhenShinyFound.SelectedIndex = programConfig.WhenShinyFound;
@@ -943,7 +898,7 @@ namespace ZAShinyWarper
             }
         }
 
-        private void SetUIEnableState(bool enabled)
+        private void SetUIEnableState(bool enabled, bool readWrite = false)
         {
             Invoke(() =>
             {
@@ -952,12 +907,14 @@ namespace ZAShinyWarper
                 gBStashedShiny.Enabled = enabled;
                 btnScreenOn.Enabled = enabled;
                 btnScreenOff.Enabled = enabled;
-                btnWebhookSettings.Enabled = enabled;
                 btnWarp.Enabled = enabled;
                 btnResetFilters.Enabled = enabled;
                 btnExportSets.Enabled = enabled;
                 btnMonitoring.Enabled = enabled;
-                btnConnect.Text = enabled ? "Disconnect" : "Connect";
+                if (!readWrite)
+                    btnConnect.Text = enabled ? "Disconnect" : "Connect";
+                else
+                    btnConnect.Enabled = enabled;
             });
         }
 
@@ -1083,7 +1040,6 @@ namespace ZAShinyWarper
                 weather = (Weather)cBForcedWeather.SelectedItem!;
             });
 
-
             // Rotate camera for spawns
             if (camSpeed != 0)
                 await ConnectionWrapper.SetRotation(camSpeed, GlobalToken);
@@ -1128,10 +1084,13 @@ namespace ZAShinyWarper
                         }
                         else if (matchesFilter && action == ShinyFoundAction.ClearAndContinue) // Found what we wanted, keep going
                         {
-                            BeginInvoke(() =>
+                            if (programConfig.NotifyOnMatch)
                             {
-                                MessageBox.Show($"We Found A Match after {currentWarps} attempts! Let's keep going to find more!\r\n\r\n{pk}\r\n", "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                            });
+                                ShowShinyNotification(
+                                    $"We Found A Match after {currentWarps} attempts! Let's keep going to find more!\r\n\r\n{pk}\r\n",
+                                    "Found!"
+                                );
+                            }
                         }
                         else if (matchesFilter && cacheIsFull && action != ShinyFoundAction.StopOnFound) // Found what we wanted in this run and the cache is full
                         {
@@ -1163,12 +1122,24 @@ namespace ZAShinyWarper
                             }
                             else // Cache is full but no match found. Keep going
                             {
-                                ShowUnwantedShinyMessage(pk);
+                                if (programConfig.NotifyOnNonMatch)
+                                {
+                                    ShowShinyNotification(
+                                        $"The following Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}has been found, but does not match your filter.\r\nYou may wish to remove it such that it doesn't occupy one of your shiny stash slots.\r\n\r\n{pk}\r\n",
+                                        "Found something we don't want!"
+                                    );
+                                }
                             }
                         }
                         else if (!matchesFilter) // No match, still room in cache
                         {
-                            ShowUnwantedShinyMessage(pk);
+                            if (programConfig.NotifyOnNonMatch)
+                            {
+                                ShowShinyNotification(
+                                    $"The following Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}has been found, but does not match your filter.\r\nYou may wish to remove it such that it doesn't occupy one of your shiny stash slots.\r\n\r\n{pk}\r\n",
+                                    "Found something we don't want!"
+                                );
+                            }
                         }
 
                         if (shouldSendEmbed)
@@ -1189,15 +1160,22 @@ namespace ZAShinyWarper
 
                         Invoke(() => btnWarp.Text = "Start Warping");
                         SetFiltersEnableState(true);
-                        BeginInvoke(() => MessageBox.Show(message, cacheIsFull ? "Cache Full!" : "Found!", MessageBoxButtons.OK, MessageBoxIcon.Warning));
+
+                        if (programConfig.NotifyOnCacheFull && cacheIsFull)
+                        {
+                            ShowShinyNotification(message, "Cache Full!");
+                        }
+                        else if (programConfig.NotifyOnMatch)
+                        {
+                            ShowShinyNotification(message, "Found!");
+                        }
                     }
 
-                    void ShowUnwantedShinyMessage(StashedShiny<PA9> pk)
+                    void ShowShinyNotification(string message, string title)
                     {
                         BeginInvoke(() =>
                         {
-                            MessageBox.Show($"The following Shiny {(pk.PKM.IsAlpha ? "Alpha " : "")}has been found, but does not match your filter.\r\nYou may wish to remove it such that it doesn't occupy one of your shiny stash slots.\r\n\r\n{pk}\r\n",
-                                "Found something we don't want!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         });
                     }
                 }
@@ -1420,7 +1398,6 @@ namespace ZAShinyWarper
                 warp.Click += TeleportToSpawner;
                 shinyContextMenu.Items.Add(warp);
 
-
                 shinyContextMenu.Opening += ShinyContextMenuItems;
 
                 foreach (var pb in StashList)
@@ -1445,6 +1422,9 @@ namespace ZAShinyWarper
             if (menu.Items["ClearAll"] is ToolStripMenuItem clearAll)
                 clearAll.Visible = hasShiny;
 
+            if (menu.Items["Warp"] is ToolStripMenuItem warp)
+                warp.Visible = hasShiny;
+
             if (menu.Items["Refresh"] is ToolStripMenuItem refresh)
                 refresh.Visible = true; // always visible
         }
@@ -1463,6 +1443,7 @@ namespace ZAShinyWarper
             {
                 var shiny = shinyHunter.StashedShinies[index];
 
+                SetUIEnableState(false, true);
                 DialogResult result = DialogResult.No;
                 Invoke(() =>
                 {
@@ -1502,6 +1483,7 @@ namespace ZAShinyWarper
                         });
                     }
                 }
+                SetUIEnableState(true, true);
             }
         }
 
@@ -1516,6 +1498,7 @@ namespace ZAShinyWarper
 
             if (shinyHunter.StashedShinies.Count != 0)
             {
+                SetUIEnableState(false, true);
                 DialogResult result = DialogResult.No;
                 Invoke(() =>
                 {
@@ -1555,6 +1538,7 @@ namespace ZAShinyWarper
                         });
                     }
                 }
+                SetUIEnableState(true, true);
             }
         }
 
@@ -1569,10 +1553,12 @@ namespace ZAShinyWarper
                 return;
             try
             {
+                SetUIEnableState(false, true);
                 // Reload the stashed shinies
                 await shinyHunter.LoadStashedShinies(GlobalToken);
                 // Update the display
                 DisplayStashedShinies();
+                SetUIEnableState(true, true);
                 BeginInvoke(() =>
                 {
                     MessageBox.Show(ActiveForm, $"Shiny stash has been refreshed.", "Success",
@@ -1611,7 +1597,7 @@ namespace ZAShinyWarper
                 if (result == DialogResult.OK)
                 {
                     var adjusted = new Vector3 { X = location.X + .05f, Y = location.Y + .5f, Z = location.Z + .05f };
-                await TeleportPlayer(adjusted, true);
+                    await TeleportPlayer(adjusted, true);
                 }
                 else
                 {
@@ -1623,7 +1609,7 @@ namespace ZAShinyWarper
                 var result = MessageBox.Show($"You must be in \"The Sewers: Main Access\" to warp to this Shiny's location{Environment.NewLine}Click OK to proceed", "Map Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
                 if (result == DialogResult.OK)
                 {
-                    var adjusted = new Vector3 { X = location.X , Y = location.Y + .5f, Z = location.Z };
+                    var adjusted = new Vector3 { X = location.X, Y = location.Y + .5f, Z = location.Z };
                     await TeleportPlayer(adjusted, true);
                 }
                 else
@@ -1821,9 +1807,9 @@ namespace ZAShinyWarper
             }
         }
 
-        private void OnClickWebhookSettings(object sender, EventArgs e)
+        private void OnClickSettings(object sender, EventArgs e)
         {
-            var form = new WebhookForm(programConfig);
+            var form = new SettingsForm(programConfig);
             CenterFormOnParent(form);
             if (form.ShowDialog() == DialogResult.OK)
             {
