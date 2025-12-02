@@ -19,9 +19,6 @@ namespace ZAShinyWarper
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ZAWarpWindow));
-            lbl_IP = new Label();
-            tB_IP = new TextBox();
             btnConnect = new Button();
             gBControls = new GroupBox();
             btnIndexDown = new Button();
@@ -40,8 +37,8 @@ namespace ZAShinyWarper
             btnBack = new Button();
             btnForw = new Button();
             lblThanks = new Label();
-            btnConnectUSB = new Button();
             gBShinyHunt = new GroupBox();
+            cBSpecies = new CheckedListBox();
             tbSpeciesSearch = new TextBox();
             cBForcedTimeOfDay = new ComboBox();
             btnRefreshTime = new Button();
@@ -75,7 +72,6 @@ namespace ZAShinyWarper
             cBIVDef = new ComboBox();
             cBIVAtk = new ComboBox();
             cBIVHP = new ComboBox();
-            cBSpecies = new CheckedListBox();
             btnResetSpecies = new Button();
             lblSpecies = new Label();
             cBWhenShinyFound = new ComboBox();
@@ -96,8 +92,10 @@ namespace ZAShinyWarper
             btnScreenOn = new Button();
             btnScreenOff = new Button();
             ShinyInfo = new ToolTip(components);
-            btnWebhookSettings = new Button();
+            btnSettings = new Button();
             btnMonitoring = new Button();
+            warpTimer = new System.Windows.Forms.Timer(components);
+            warperIcon = new NotifyIcon(components);
             gBControls.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)nUDDistance).BeginInit();
             gBShinyHunt.SuspendLayout();
@@ -120,29 +118,9 @@ namespace ZAShinyWarper
             ((System.ComponentModel.ISupportInitialize)StashedShiny10).BeginInit();
             SuspendLayout();
             // 
-            // lbl_IP
-            // 
-            lbl_IP.AutoSize = true;
-            lbl_IP.Location = new Point(12, 31);
-            lbl_IP.Margin = new Padding(4, 0, 4, 0);
-            lbl_IP.Name = "lbl_IP";
-            lbl_IP.Size = new Size(20, 15);
-            lbl_IP.TabIndex = 0;
-            lbl_IP.Text = "IP:";
-            // 
-            // tB_IP
-            // 
-            tB_IP.Location = new Point(32, 27);
-            tB_IP.Margin = new Padding(4, 3, 4, 3);
-            tB_IP.MaxLength = 15;
-            tB_IP.Name = "tB_IP";
-            tB_IP.Size = new Size(131, 23);
-            tB_IP.TabIndex = 1;
-            tB_IP.Text = "192.168.0.1";
-            // 
             // btnConnect
             // 
-            btnConnect.Location = new Point(15, 60);
+            btnConnect.Location = new Point(16, 22);
             btnConnect.Margin = new Padding(4, 3, 4, 3);
             btnConnect.Name = "btnConnect";
             btnConnect.Size = new Size(148, 30);
@@ -169,11 +147,11 @@ namespace ZAShinyWarper
             gBControls.Controls.Add(btnBack);
             gBControls.Controls.Add(btnForw);
             gBControls.Enabled = false;
-            gBControls.Location = new Point(15, 165);
+            gBControls.Location = new Point(15, 133);
             gBControls.Margin = new Padding(4, 3, 4, 3);
             gBControls.Name = "gBControls";
             gBControls.Padding = new Padding(4, 3, 4, 3);
-            gBControls.Size = new Size(303, 381);
+            gBControls.Size = new Size(303, 413);
             gBControls.TabIndex = 3;
             gBControls.TabStop = false;
             gBControls.Text = "Editing";
@@ -184,9 +162,9 @@ namespace ZAShinyWarper
             btnIndexDown.FlatAppearance.BorderColor = SystemColors.ControlDark;
             btnIndexDown.FlatAppearance.BorderSize = 0;
             btnIndexDown.FlatStyle = FlatStyle.Flat;
-            btnIndexDown.Location = new Point(275, 92);
+            btnIndexDown.Location = new Point(275, 104);
             btnIndexDown.Name = "btnIndexDown";
-            btnIndexDown.Size = new Size(18, 68);
+            btnIndexDown.Size = new Size(18, 86);
             btnIndexDown.TabIndex = 22;
             btnIndexDown.TabStop = false;
             btnIndexDown.Text = "˅˅";
@@ -201,7 +179,7 @@ namespace ZAShinyWarper
             btnIndexUp.FlatStyle = FlatStyle.Flat;
             btnIndexUp.Location = new Point(275, 23);
             btnIndexUp.Name = "btnIndexUp";
-            btnIndexUp.Size = new Size(18, 69);
+            btnIndexUp.Size = new Size(18, 92);
             btnIndexUp.TabIndex = 21;
             btnIndexUp.Text = "˄˄";
             btnIndexUp.UseVisualStyleBackColor = false;
@@ -209,7 +187,7 @@ namespace ZAShinyWarper
             // 
             // btnExportCoords
             // 
-            btnExportCoords.Location = new Point(158, 199);
+            btnExportCoords.Location = new Point(157, 233);
             btnExportCoords.Margin = new Padding(4, 3, 4, 3);
             btnExportCoords.Name = "btnExportCoords";
             btnExportCoords.Size = new Size(137, 27);
@@ -220,7 +198,7 @@ namespace ZAShinyWarper
             // 
             // btnImportCoords
             // 
-            btnImportCoords.Location = new Point(10, 199);
+            btnImportCoords.Location = new Point(9, 233);
             btnImportCoords.Margin = new Padding(4, 3, 4, 3);
             btnImportCoords.Name = "btnImportCoords";
             btnImportCoords.Size = new Size(135, 27);
@@ -232,7 +210,7 @@ namespace ZAShinyWarper
             // btnMoveUp
             // 
             btnMoveUp.Font = new Font("Segoe UI", 10F);
-            btnMoveUp.Location = new Point(108, 285);
+            btnMoveUp.Location = new Point(107, 319);
             btnMoveUp.Margin = new Padding(4, 3, 4, 3);
             btnMoveUp.Name = "btnMoveUp";
             btnMoveUp.Size = new Size(88, 27);
@@ -243,7 +221,7 @@ namespace ZAShinyWarper
             // 
             // btnDelete
             // 
-            btnDelete.Location = new Point(207, 166);
+            btnDelete.Location = new Point(206, 200);
             btnDelete.Margin = new Padding(4, 3, 4, 3);
             btnDelete.Name = "btnDelete";
             btnDelete.Size = new Size(88, 27);
@@ -254,7 +232,7 @@ namespace ZAShinyWarper
             // 
             // btnRestore
             // 
-            btnRestore.Location = new Point(108, 166);
+            btnRestore.Location = new Point(107, 200);
             btnRestore.Margin = new Padding(4, 3, 4, 3);
             btnRestore.Name = "btnRestore";
             btnRestore.Size = new Size(88, 27);
@@ -265,7 +243,7 @@ namespace ZAShinyWarper
             // 
             // btnSave
             // 
-            btnSave.Location = new Point(10, 166);
+            btnSave.Location = new Point(9, 200);
             btnSave.Margin = new Padding(4, 3, 4, 3);
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(88, 27);
@@ -280,13 +258,13 @@ namespace ZAShinyWarper
             lBCoords.Location = new Point(10, 22);
             lBCoords.Margin = new Padding(4, 3, 4, 3);
             lBCoords.Name = "lBCoords";
-            lBCoords.Size = new Size(284, 139);
+            lBCoords.Size = new Size(284, 169);
             lBCoords.TabIndex = 14;
             // 
             // lblFreeWarp
             // 
             lblFreeWarp.AutoSize = true;
-            lblFreeWarp.Location = new Point(12, 248);
+            lblFreeWarp.Location = new Point(11, 282);
             lblFreeWarp.Margin = new Padding(4, 0, 4, 0);
             lblFreeWarp.Name = "lblFreeWarp";
             lblFreeWarp.Size = new Size(61, 15);
@@ -295,7 +273,7 @@ namespace ZAShinyWarper
             // 
             // nUDDistance
             // 
-            nUDDistance.Location = new Point(216, 340);
+            nUDDistance.Location = new Point(215, 374);
             nUDDistance.Margin = new Padding(4, 3, 4, 3);
             nUDDistance.Name = "nUDDistance";
             nUDDistance.Size = new Size(76, 23);
@@ -304,7 +282,7 @@ namespace ZAShinyWarper
             // 
             // btnLeft
             // 
-            btnLeft.Location = new Point(12, 285);
+            btnLeft.Location = new Point(11, 319);
             btnLeft.Margin = new Padding(4, 3, 4, 3);
             btnLeft.Name = "btnLeft";
             btnLeft.Size = new Size(88, 27);
@@ -315,7 +293,7 @@ namespace ZAShinyWarper
             // 
             // btnRight
             // 
-            btnRight.Location = new Point(204, 285);
+            btnRight.Location = new Point(203, 319);
             btnRight.Margin = new Padding(4, 3, 4, 3);
             btnRight.Name = "btnRight";
             btnRight.Size = new Size(88, 27);
@@ -326,7 +304,7 @@ namespace ZAShinyWarper
             // 
             // btnBack
             // 
-            btnBack.Location = new Point(108, 324);
+            btnBack.Location = new Point(107, 358);
             btnBack.Margin = new Padding(4, 3, 4, 3);
             btnBack.Name = "btnBack";
             btnBack.Size = new Size(88, 27);
@@ -337,7 +315,7 @@ namespace ZAShinyWarper
             // 
             // btnForw
             // 
-            btnForw.Location = new Point(108, 248);
+            btnForw.Location = new Point(107, 282);
             btnForw.Margin = new Padding(4, 3, 4, 3);
             btnForw.Name = "btnForw";
             btnForw.Size = new Size(88, 27);
@@ -355,17 +333,6 @@ namespace ZAShinyWarper
             lblThanks.TabIndex = 4;
             lblThanks.Text = "Many thanks to Kurt for PKHeX, Anubis for the shiny stash research, and Berichan for creating the original program";
             lblThanks.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // btnConnectUSB
-            // 
-            btnConnectUSB.Location = new Point(170, 60);
-            btnConnectUSB.Margin = new Padding(4, 3, 4, 3);
-            btnConnectUSB.Name = "btnConnectUSB";
-            btnConnectUSB.Size = new Size(148, 30);
-            btnConnectUSB.TabIndex = 5;
-            btnConnectUSB.Text = "ConnectUSB";
-            btnConnectUSB.UseVisualStyleBackColor = true;
-            btnConnectUSB.Click += OnClickConnectUSB;
             // 
             // gBShinyHunt
             // 
@@ -416,6 +383,17 @@ namespace ZAShinyWarper
             gBShinyHunt.TabIndex = 6;
             gBShinyHunt.TabStop = false;
             gBShinyHunt.Text = "Shiny Hunting";
+            // 
+            // cBSpecies
+            // 
+            cBSpecies.CheckOnClick = true;
+            cBSpecies.FormattingEnabled = true;
+            cBSpecies.IntegralHeight = false;
+            cBSpecies.Location = new Point(13, 295);
+            cBSpecies.Name = "cBSpecies";
+            cBSpecies.Size = new Size(204, 94);
+            cBSpecies.TabIndex = 6;
+            cBSpecies.SelectedIndexChanged += OnSpeciesSelectedIndexChange;
             // 
             // tbSpeciesSearch
             // 
@@ -732,17 +710,6 @@ namespace ZAShinyWarper
             cBIVHP.Size = new Size(65, 23);
             cBIVHP.TabIndex = 8;
             // 
-            // cBSpecies
-            // 
-            cBSpecies.CheckOnClick = true;
-            cBSpecies.FormattingEnabled = true;
-            cBSpecies.IntegralHeight = false;
-            cBSpecies.Location = new Point(13, 295);
-            cBSpecies.Name = "cBSpecies";
-            cBSpecies.Size = new Size(204, 94);
-            cBSpecies.TabIndex = 6;
-            cBSpecies.SelectedIndexChanged += OnSpeciesSelectedIndexChange;
-            // 
             // btnResetSpecies
             // 
             btnResetSpecies.Location = new Point(193, 272);
@@ -785,7 +752,7 @@ namespace ZAShinyWarper
             // btnWarp
             // 
             btnWarp.Enabled = false;
-            btnWarp.Location = new Point(170, 132);
+            btnWarp.Location = new Point(171, 94);
             btnWarp.Margin = new Padding(4, 3, 4, 3);
             btnWarp.Name = "btnWarp";
             btnWarp.Size = new Size(148, 30);
@@ -939,7 +906,7 @@ namespace ZAShinyWarper
             // btnScreenOn
             // 
             btnScreenOn.Enabled = false;
-            btnScreenOn.Location = new Point(15, 96);
+            btnScreenOn.Location = new Point(16, 58);
             btnScreenOn.Name = "btnScreenOn";
             btnScreenOn.Size = new Size(148, 30);
             btnScreenOn.TabIndex = 8;
@@ -950,7 +917,7 @@ namespace ZAShinyWarper
             // btnScreenOff
             // 
             btnScreenOff.Enabled = false;
-            btnScreenOff.Location = new Point(169, 96);
+            btnScreenOff.Location = new Point(170, 58);
             btnScreenOff.Name = "btnScreenOff";
             btnScreenOff.Size = new Size(148, 30);
             btnScreenOff.TabIndex = 9;
@@ -964,21 +931,20 @@ namespace ZAShinyWarper
             ShinyInfo.InitialDelay = 750;
             ShinyInfo.ReshowDelay = 1000;
             // 
-            // btnWebhookSettings
+            // btnSettings
             // 
-            btnWebhookSettings.Enabled = false;
-            btnWebhookSettings.Location = new Point(170, 24);
-            btnWebhookSettings.Name = "btnWebhookSettings";
-            btnWebhookSettings.Size = new Size(148, 30);
-            btnWebhookSettings.TabIndex = 15;
-            btnWebhookSettings.Text = "Webhook Settings";
-            btnWebhookSettings.UseVisualStyleBackColor = true;
-            btnWebhookSettings.Click += OnClickWebhookSettings;
+            btnSettings.Location = new Point(170, 22);
+            btnSettings.Name = "btnSettings";
+            btnSettings.Size = new Size(148, 30);
+            btnSettings.TabIndex = 15;
+            btnSettings.Text = "Settings";
+            btnSettings.UseVisualStyleBackColor = true;
+            btnSettings.Click += OnClickSettings;
             // 
             // btnMonitoring
             // 
             btnMonitoring.Enabled = false;
-            btnMonitoring.Location = new Point(15, 132);
+            btnMonitoring.Location = new Point(16, 94);
             btnMonitoring.Margin = new Padding(4, 3, 4, 3);
             btnMonitoring.Name = "btnMonitoring";
             btnMonitoring.Size = new Size(148, 30);
@@ -987,26 +953,29 @@ namespace ZAShinyWarper
             btnMonitoring.UseVisualStyleBackColor = true;
             btnMonitoring.Click += OnClickMonitoring;
             // 
+            // warperIcon
+            // 
+            warperIcon.Icon = Properties.Resources.icon;
+            warperIcon.Text = "Z-A Shiny Warper";
+            warperIcon.DoubleClick += OnClickTrayIcon;
+            // 
             // ZAWarpWindow
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(802, 591);
             Controls.Add(btnMonitoring);
-            Controls.Add(btnWebhookSettings);
+            Controls.Add(btnSettings);
             Controls.Add(btnScreenOff);
             Controls.Add(btnScreenOn);
             Controls.Add(gBStashedShiny);
             Controls.Add(gBShinyHunt);
-            Controls.Add(btnConnectUSB);
             Controls.Add(lblThanks);
             Controls.Add(gBControls);
             Controls.Add(btnConnect);
-            Controls.Add(tB_IP);
-            Controls.Add(lbl_IP);
             Controls.Add(btnWarp);
             FormBorderStyle = FormBorderStyle.FixedSingle;
-            Icon = (Icon)resources.GetObject("$this.Icon");
+            Icon = Properties.Resources.icon;
             Margin = new Padding(4, 3, 4, 3);
             MaximizeBox = false;
             Name = "ZAWarpWindow";
@@ -1036,17 +1005,12 @@ namespace ZAShinyWarper
             ((System.ComponentModel.ISupportInitialize)StashedShiny9).EndInit();
             ((System.ComponentModel.ISupportInitialize)StashedShiny10).EndInit();
             ResumeLayout(false);
-            PerformLayout();
         }
 
         #endregion
-
-        private System.Windows.Forms.Label lbl_IP;
-        private System.Windows.Forms.TextBox tB_IP;
         private System.Windows.Forms.Button btnConnect;
         private System.Windows.Forms.GroupBox gBControls;
         private System.Windows.Forms.Label lblThanks;
-        private System.Windows.Forms.Button btnConnectUSB;
         private System.Windows.Forms.Button btnLeft;
         private System.Windows.Forms.Button btnRight;
         private System.Windows.Forms.Button btnBack;
@@ -1101,7 +1065,7 @@ namespace ZAShinyWarper
         private Button btnScreenOff;
         private ToolTip ShinyInfo;
         private Button btnExportSets;
-        private Button btnWebhookSettings;
+        private Button btnSettings;
         private Button btnResetFilters;
         private PictureBox pBAlpha;
         private CheckBox cBIsAlpha;
@@ -1119,6 +1083,8 @@ namespace ZAShinyWarper
         private Button btnRefreshTime;
         private Button btnMonitoring;
         private TextBox tbSpeciesSearch;
+        private System.Windows.Forms.Timer warpTimer;
+        private NotifyIcon warperIcon;
     }
 }
 

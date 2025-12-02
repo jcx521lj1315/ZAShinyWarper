@@ -4,6 +4,7 @@ namespace ZAShinyWarper
 {
     public class ProgramConfig
     {
+        public SwitchProtocol Protocol { get; set; } = SwitchProtocol.WiFi;
         public string IPAddress { get; set; } = "192.168.0.1";
         public List<WebhookData> Webhooks { get; set; } = [];
         public List<Vector3> Positions { get; set; } = [];
@@ -25,7 +26,9 @@ namespace ZAShinyWarper
         public int IVSpD { get; set; } = 0;
         public int IVSpe { get; set; } = 0;
         public int UsbPort { get; set; } = 0;
-        public SwitchProtocol Protocol { get; set; } = SwitchProtocol.WiFi;
+        public bool NotifyOnMatch { get; set; } = true;
+        public bool NotifyOnNonMatch { get; set; } = false;
+        public bool NotifyOnCacheFull { get; set; } = true;
     }
 
     public class WebhookData

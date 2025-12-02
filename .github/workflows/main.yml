@@ -87,8 +87,8 @@ jobs:
       id: version
       shell: pwsh
       run: |
-        $patchVersion = ${{ github.run_number }} - 30
-        $version = "v1.0.$patchVersion"
+        $patchVersion = ${{ github.run_number }} - 53
+        $version = "v1.1.$patchVersion"
         echo "tag=$version" >> $env:GITHUB_OUTPUT
     
     - name: Create GitHub Release

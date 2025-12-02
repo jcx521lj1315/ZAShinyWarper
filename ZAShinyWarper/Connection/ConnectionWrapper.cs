@@ -17,15 +17,14 @@ public class ConnectionWrapper(SwitchConnectionConfig Config)
     private bool IsConnected { get; set; }
     private readonly bool CRLF = Config.Protocol is SwitchProtocol.WiFi;
 
-    private readonly long[] jumpsPos = [0x41ED340, 0x248, 0x00, 0x138, 0x90]; // [[[[main+41ED340]+248]+00]+138]+90
-    private readonly long[] weatherPointer = [0x4200C20, 0x1B0, 0x00]; // [[main+4200C20]+1B0]+0
-    private readonly long[] timePointer = [0x4200C40, 0xD8, 0x30]; // [[main+4200C40]+D8]+30
-    private readonly long[] basePointer = [0x4201D20, 0x00];
-    private readonly long[] arrayStartPointer = [0x4201D20, 0x350, 0x00];
-    private readonly long[] invalidStartPointer = [0x4201D20, 0x358, 0x00];
+    private readonly long[] jumpsPos = [0x41EF340, 0x248, 0x00, 0x138, 0x90];
+    private readonly long[] weatherPointer = [0x4202C20, 0x1B0, 0x00];
+    private readonly long[] timePointer = [0x4202C40, 0xD8, 0x30];
+    private readonly long[] basePointer = [0x4203D20, 0x00];
+    private readonly long[] arrayStartPointer = [0x4203D20, 0x350, 0x00];
+    private readonly long[] invalidStartPointer = [0x4203D20, 0x358, 0x00];
 
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
-    public event EventHandler<string>? ConnectionError;
 
     public async Task Connect(CancellationToken token)
     {
@@ -41,7 +40,6 @@ public class ConnectionWrapper(SwitchConnectionConfig Config)
         catch (Exception ex)
         {
             IsConnected = false;
-            ConnectionError?.Invoke(this, $"Failed to connect: {ex.Message}");
             throw;
         }
     }
@@ -60,7 +58,6 @@ public class ConnectionWrapper(SwitchConnectionConfig Config)
         catch (Exception ex)
         {
             IsConnected = false;
-            ConnectionError?.Invoke(this, $"Error during disconnect: {ex.Message}");
         }
     }
 
